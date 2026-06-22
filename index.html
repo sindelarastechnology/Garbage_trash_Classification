@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Lengkap UAS Pengolahan Citra - Garbage Classification</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 0;
+        }
+        
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 270px;
+            height: 100vh;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            overflow-y: auto;
+            z-index: 1000;
+            padding: 20px 0;
+            transition: transform 0.3s ease;
+        }
+        .sidebar::-webkit-scrollbar { width: 5px; }
+        .sidebar::-webkit-scrollbar-track { background: #1a1a2e; }
+        .sidebar::-webkit-scrollbar-thumb { background: #667eea; border-radius: 3px; }
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 15px;
+        }
+        .sidebar-header h3 {
+            color: #667eea;
+            font-size: 1em;
+            margin-bottom: 5px;
+        }
+        .sidebar-header p {
+            font-size: 0.75em;
+            color: #999;
+        }
+        .sidebar nav ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar nav ul li {
+            margin: 0;
+        }
+        .sidebar nav ul li a {
+            display: block;
+            padding: 8px 20px 8px 25px;
+            color: #ccc;
+            text-decoration: none;
+            font-size: 0.85em;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .sidebar nav ul li a:hover,
+        .sidebar nav ul li a.active {
+            color: #fff;
+            background: rgba(102, 126, 234, 0.15);
+            border-left-color: #667eea;
+        }
+        .sidebar nav ul li a .badge {
+            float: right;
+            background: #667eea;
+            color: #fff;
+            font-size: 0.7em;
+            padding: 1px 7px;
+            border-radius: 10px;
+        }
+        .sidebar nav ul li.divider {
+            height: 1px;
+            background: #333;
+            margin: 8px 20px;
+        }
+        .sidebar-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #333;
+            margin-top: 15px;
+            font-size: 0.75em;
+            color: #666;
+            text-align: center;
+        }
+
+        /* ===== SIDEBAR TOGGLE (Mobile) ===== */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1100;
+            background: #667eea;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            width: 44px;
+            height: 44px;
+            font-size: 1.4em;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .sidebar-toggle:hover { background: #5a6fd8; }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 20px 0 290px;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            min-height: 100vh;
+        }
+
+        /* ===== SCROLL PROGRESS ===== */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 270px;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            z-index: 999;
+            transition: width 0.1s;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .container { margin: 0 15px 0 285px; padding: 30px; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-toggle { display: block; }
+            .sidebar-overlay.active { display: block; }
+            .container { margin: 0 10px; padding: 20px; margin-top: 60px; }
+            .progress-bar { left: 0; }
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 4px solid #667eea;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .info-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .info-box h3 {
+            margin-bottom: 10px;
+        }
+        
+        .section {
+            margin: 40px 0;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        .section h3 {
+            color: #764ba2;
+            font-size: 1.5em;
+            margin: 25px 0 15px 0;
+        }
+        
+        .section h4 {
+            color: #555;
+            font-size: 1.2em;
+            margin: 20px 0 10px 0;
+        }
+        
+        .code-box {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .code-box .comment {
+            color: #68d391;
+        }
+        
+        .code-box .keyword {
+            color: #fc8181;
+        }
+        
+        .highlight {
+            background: #fef5e7;
+            padding: 15px;
+            border-left: 4px solid #f39c12;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border-left-color: #17a2b8;
+            color: #0c5460;
+        }
+        
+        ul, ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+        
+        li {
+            margin: 10px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        
+        table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+        
+        .toc h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .toc li {
+            padding: 8px 0;
+        }
+        
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .qa-box {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .question {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        
+        .answer {
+            color: #555;
+            line-height: 1.8;
+        }
+        
+        .formula {
+            background: #fff;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            text-align: center;
+            margin: 15px 0;
+            font-family: 'Times New Roman', serif;
+            font-size: 1.1em;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Progress Bar -->
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar Toggle (mobile) -->
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>📚 Panduan UAS</h3>
+            <p>Pengolahan Citra Digital<br>Garbage Classification</p>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="#mapping" class="active">📋 Pemetaan Soal vs Notebook</a></li>
+                <li class="divider"></li>
+                <li><a href="#soal1">📊 Soal 1: Dataset & Akuisisi</a></li>
+                <li><a href="#soal2">🖼️ Soal 2: Representasi Citra</a></li>
+                <li><a href="#soal3">⚙️ Soal 3: Teknik Pengolahan</a></li>
+                <li><a href="#soal4">🤖 Soal 4: CNN MobileNetV2</a></li>
+                <li><a href="#soal5">📈 Soal 5: Analisis Hasil</a></li>
+                <li class="divider"></li>
+                <li><a href="#code">💻 Penjelasan Kode Baris per Baris</a></li>
+                <li><a href="#cells">📑 Daftar 25 Cell Notebook</a></li>
+                <li class="divider"></li>
+                <li><a href="#questions">🎤 Prediksi Pertanyaan Dosen</a></li>
+                <li><a href="#video">🎬 Skrip Video Youtube</a></li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            UAS Pengolahan Citra &bull; CS20-3403
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="container">
+        <div class="header">
+            <h1>📚 Panduan Lengkap UAS Pengolahan Citra</h1>
+            <div class="subtitle">
+                <strong>Garbage Classification menggunakan CNN (MobileNetV2)</strong><br>
+                Mata Kuliah: Pengolahan Citra / CS20-3403<br>
+                Dosen: Abd. Chairul Fauzan, M.Kom.
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3>🎯 Tujuan Panduan Ini</h3>
+            <p>Panduan ini dirancang untuk membantu Anda memahami secara mendalam:</p>
+            <ul>
+                <li>✅ Setiap baris kode dalam program Garbage Classification</li>
+                <li>✅ Konsep pengolahan citra digital yang diterapkan</li>
+                <li>✅ Cara kerja model CNN (MobileNetV2) secara detail</li>
+                <li>✅ Jawaban lengkap untuk setiap soal UAS</li>
+                <li>✅ Prediksi pertanyaan dosen saat presentasi + jawaban</li>
+                <li>🎬 Skrip video Youtube siap-pakai</li>
+            </ul>
+        </div>
+
+        <!-- PEMETAAN SOAL VS NOTEBOOK -->
+        <div class="section" id="mapping">
+            <h2>📋 Pemetaan Soal vs Implementasi Notebook</h2>
+            <p><strong>Apakah semua soal UAS sudah terjawab di notebook?</strong> Berikut pemetaan lengkap antara soal di <code>soal.md</code> dengan cell-cell di <code>UAS_Pengolahan_Citra_Garbage_Classification.ipynb</code>:</p>
+
+            <h3>✅ Soal 1 — Dataset dan Akuisisi Citra (Bobot 20)</h3>
+            <table>
+                <tr><th>Sub-Soal</th><th>Status</th><th>Letak di Notebook</th><th>Penjelasan</th></tr>
+                <tr>
+                    <td>Nama & sumber dataset</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell Markdown "Soal 1" + Cell 2</td>
+                    <td>Menyebut "Garbage Classification Dataset" dari Kaggle, dengan link lengkap</td>
+                </tr>
+                <tr>
+                    <td>Tujuan penggunaan dataset</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell Markdown "Soal 1"</td>
+                    <td>"Mengklasifikasikan sampah secara otomatis ke dalam 6 kategori"</td>
+                </tr>
+                <tr>
+                    <td>Jumlah data & kelas</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 2 (kode)</td>
+                    <td>Menampilkan count per kelas + total 13.901 gambar, 6 kelas</td>
+                </tr>
+                <tr>
+                    <td>Contoh citra</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 3 (kode)</td>
+                    <td>Grid 2x3 menampilkan 6 gambar sample (1 per kelas) beserta ukuran</td>
+                </tr>
+            </table>
+
+            <h3>✅ Soal 2 — Representasi Citra Digital (Bobot 20)</h3>
+            <table>
+                <tr><th>Sub-Soal</th><th>Status</th><th>Letak di Notebook</th><th>Penjelasan</th></tr>
+                <tr>
+                    <td>Cara baca citra (Python)</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 4 (kode)</td>
+                    <td>Menggunakan <code>cv2.imread()</code> dari OpenCV, lalu dikonversi BGR→RGB</td>
+                </tr>
+                <tr>
+                    <td>Format & ukuran citra</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 4 (kode)</td>
+                    <td>Menampilkan shape (256,256,3), dtype uint8, format JPG, nilai pixel 0-255</td>
+                </tr>
+                <tr>
+                    <td>Representasi RGB/pixel</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 4 + Cell 5</td>
+                    <td>Channel R/G/B divisualisasikan terpisah, contoh nilai pixel 5x5 ditampilkan</td>
+                </tr>
+            </table>
+
+            <h3>✅ Soal 3 — Teknik Pengolahan Citra (Bobot 30)</h3>
+            <table>
+                <tr><th>Tahap</th><th>Status</th><th>Fungsi</th><th>Alasan</th></tr>
+                <tr><td>1. Resize</td><td style="color:#28a745;font-weight:bold;">✅</td><td><code>cv2.resize()</code> 256→224</td><td>Konsistensi input CNN MobileNetV2</td></tr>
+                <tr><td>2. Grayscale</td><td style="color:#28a745;font-weight:bold;">✅</td><td><code>cv2.cvtColor(…,RGB2GRAY)</code></td><td>Reduksi dimensi & analisis tekstur</td></tr>
+                <tr><td>3. Normalisasi</td><td style="color:#28a745;font-weight:bold;">✅</td><td>Bagi 255.0 (0-255 → 0-1)</td><td>Stabilitas & konvergensi training</td></tr>
+                <tr><td>4. Gaussian Blur</td><td style="color:#28a745;font-weight:bold;">✅</td><td>Kernel (5,5)</td><td>Reduksi noise, smoothing</td></tr>
+                <tr><td>5. Segmentasi (Otsu)</td><td style="color:#28a745;font-weight:bold;">✅</td><td><code>cv2.threshold(…,OTSU)</code></td><td>Pemisahan objek dari background</td></tr>
+                <tr><td>6. Edge Detection</td><td style="color:#28a745;font-weight:bold;">✅</td><td>Canny (thresh1=50, thresh2=150)</td><td>Deteksi tepi/kontur objek</td></tr>
+                <tr><td>7. Ekstraksi Fitur</td><td style="color:#28a745;font-weight:bold;">✅</td><td>Histogram RGB 256 bins</td><td>Distribusi warna sebagai fitur</td></tr>
+            </table>
+            <div class="highlight warning">
+                <strong>Catatan:</strong> 7 tahap preprocessing di atas didemonstrasikan pada 1 gambar sample untuk edukasi. Model CNN yang dilatih menggunakan augmentasi (rotation, shift, shear, zoom, flip) + rescale 1./255 — bukan grayscale/blur/otsu/canny. Ini wajar karena MobileNetV2 membutuhkan input RGB 3-channel. Untuk UAS, pendekatan ini valid karena soal meminta "analisis tahapan preprocessing".
+            </div>
+
+            <h3>✅ Soal 4 — Aplikasi Pengolahan Citra (Bobot 15)</h3>
+            <table>
+                <tr><th>Sub-Soal</th><th>Status</th><th>Letak di Notebook</th><th>Detail</th></tr>
+                <tr>
+                    <td>Nama algoritma</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell Markdown "Soal 4" + Cell 9</td>
+                    <td>CNN dengan Transfer Learning (MobileNetV2)</td>
+                </tr>
+                <tr>
+                    <td>Fungsi algoritma terhadap citra</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell Markdown "Soal 4"</td>
+                    <td>Ekstraksi fitur visual hierarkis: tepi → tekstur → bentuk → objek</td>
+                </tr>
+                <tr>
+                    <td>Hubungan dengan pengenalan objek</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell Markdown "Soal 4"</td>
+                    <td>CNN mengenali pola visual unik tiap jenis sampah untuk diklasifikasikan</td>
+                </tr>
+            </table>
+
+            <h3>✅ Soal 5 — Analisis Hasil (Bobot 15)</h3>
+            <table>
+                <tr><th>Sub-Soal</th><th>Status</th><th>Letak di Notebook</th><th>Detail</th></tr>
+                <tr>
+                    <td>Input citra yang diuji</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 15 (kode)</td>
+                    <td>Gambar glass dari dataset (index ke-5)</td>
+                </tr>
+                <tr>
+                    <td>Output program</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 15 (kode)</td>
+                    <td>Bar chart confidence + label prediksi + persentase keyakinan</td>
+                </tr>
+                <tr>
+                    <td>Akurasi hasil pengujian</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 12 (kode)</td>
+                    <td>Validation accuracy: 91.79%, Loss: 0.2597</td>
+                </tr>
+                <tr>
+                    <td>Classification Report</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 13 (kode)</td>
+                    <td>Precision/Recall/F1 per kelas (semua ≥ 0.90)</td>
+                </tr>
+                <tr>
+                    <td>Confusion Matrix</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 14 (kode)</td>
+                    <td>Heatmap visual dengan nilai numerik</td>
+                </tr>
+                <tr>
+                    <td>Kesimpulan</td>
+                    <td style="color:#28a745;font-weight:bold;">✅ Ada</td>
+                    <td>Cell 16 (kode)</td>
+                    <td>"Model BERHASIL dengan akurasi ≥ 85%"</td>
+                </tr>
+            </table>
+
+            <div class="success highlight">
+                <h3>🎯 KESIMPULAN: Semua Soal Terjawab dengan Lengkap!</h3>
+                <p style="font-size:1.1em;">
+                    ✅ <strong>Soal 1-5</strong> semuanya terjawab dengan baik di notebook.<br>
+                    ✅ <strong>Soal 3</strong> bahkan melebihi minimum (7 tahap vs minimal 3 tahap).<br>
+                    ✅ <strong>Akurasi 91.79%</strong> menunjukkan model bekerja sangat baik.<br>
+                    ✅ <strong>Classification report</strong> menunjukkan performa seimbang di semua kelas (F1 ≥ 0.90).
+                </p>
+            </div>
+        </div>
+
+        <!-- SOAL 1: DATASET DAN AKUISISI CITRA -->
+        <div class="section" id="soal1">
+            <h2>📊 Soal 1: Dataset dan Akuisisi Citra</h2>
+            <p><strong>Bobot: 20 | Topik: Dataset dan Akuisisi Citra</strong></p>
+
+            <h3>1.1 Nama dan Sumber Dataset</h3>
+            <div class="qa-box">
+                <div class="answer">
+                    <strong>Nama Dataset:</strong> Garbage Classification Dataset<br>
+                    <strong>Sumber:</strong> Kaggle<br>
+                    <strong>Link:</strong> <a href="https://www.kaggle.com/datasets/asdasdasasdas/garbage-classification" target="_blank">
+                        https://www.kaggle.com/datasets/asdasdasasdas/garbage-classification
+                    </a>
+                </div>
+            </div>
+
+            <h3>1.2 Tujuan Penggunaan Dataset</h3>
+            <div class="highlight info">
+                <p><strong>Tujuan Utama:</strong> Mengembangkan sistem klasifikasi sampah otomatis menggunakan teknologi Computer Vision dan Deep Learning.</p>
+                <br>
+                <p><strong>Manfaat Praktis:</strong></p>
+                <ul>
+                    <li>🔹 <strong>Pengelolaan Limbah Pintar:</strong> Membantu sistem pemilahan sampah otomatis di tempat pembuangan</li>
+                    <li>🔹 <strong>Edukasi Lingkungan:</strong> Mengajarkan masyarakat cara memilah sampah dengan benar</li>
+                    <li>🔹 <strong>Efisiensi Daur Ulang:</strong> Meningkatkan akurasi pemilahan untuk proses daur ulang</li>
+                    <li>🔹 <strong>Penelitian Lingkungan:</strong> Membantu analisis komposisi sampah untuk studi lingkungan</li>
+                </ul>
+            </div>
+
+            <h3>1.3 Jumlah Data dan Kategori</h3>
+            <table>
+                <tr>
+                    <th>Kelas</th>
+                    <th>Jumlah Gambar</th>
+                    <th>Persentase</th>
+                </tr>
+                <tr>
+                    <td>cardboard (kardus)</td>
+                    <td>2,214</td>
+                    <td>15.9%</td>
+                </tr>
+                <tr>
+                    <td>glass (kaca)</td>
+                    <td>2,500</td>
+                    <td>18.0%</td>
+                </tr>
+                <tr>
+                    <td>metal (logam)</td>
+                    <td>2,084</td>
+                    <td>15.0%</td>
+                </tr>
+                <tr>
+                    <td>paper (kertas)</td>
+                    <td>2,315</td>
+                    <td>16.7%</td>
+                </tr>
+                <tr>
+                    <td>plastic (plastik)</td>
+                    <td>2,288</td>
+                    <td>16.5%</td>
+                </tr>
+                <tr>
+                    <td>trash (sampah organik)</td>
+                    <td>2,500</td>
+                    <td>18.0%</td>
+                </tr>
+                <tr style="background: #667eea; color: white; font-weight: bold;">
+                    <td>TOTAL</td>
+                    <td>13,901</td>
+                    <td>100%</td>
+                </tr>
+            </table>
+
+            <div class="highlight success">
+                <p><strong>✅ Karakteristik Dataset:</strong></p>
+                <ul>
+                    <li><strong>Dataset Seimbang (Balanced):</strong> Distribusi data relatif merata antar kelas (15-18%)</li>
+                    <li><strong>Ukuran Memadai:</strong> 13.901 gambar cukup untuk melatih model deep learning</li>
+                    <li><strong>Kualitas Tinggi:</strong> Gambar berwarna (RGB) dengan resolusi beragam</li>
+                </ul>
+            </div>
+
+            <h3>1.4 Contoh Citra yang Digunakan</h3>
+            <div class="code-box">
+<span class="comment"># Kode untuk menampilkan contoh citra dari setiap kelas:</span>
+
+fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+axes = axes.flatten()
+
+for i, cls in enumerate(CLASSES):
+    cls_path = os.path.join(DATASET_PATH, cls)
+    img_file = os.listdir(cls_path)[0]
+    img = cv2.imread(os.path.join(cls_path, img_file))
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    axes[i].imshow(img_rgb)
+    axes[i].set_title(f'Kelas: {cls}')
+    axes[i].axis('off')
+
+plt.suptitle('Contoh Citra dari Setiap Kelas')
+plt.show()
+            </div>
+
+            <div class="highlight">
+                <p><strong>📌 Penjelasan Kode:</strong></p>
+                <ul>
+                    <li><code>plt.subplots(2, 3)</code> → Membuat grid 2×3 untuk menampilkan 6 kelas</li>
+                    <li><code>cv2.imread()</code> → Membaca gambar dalam format BGR (Blue-Green-Red)</li>
+                    <li><code>cv2.cvtColor(..., cv2.COLOR_BGR2RGB)</code> → Konversi BGR ke RGB agar warna benar saat ditampilkan</li>
+                    <li><code>axes[i].imshow()</code> → Menampilkan gambar pada subplot</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- SOAL 2: REPRESENTASI CITRA DIGITAL -->
+        <div class="section" id="soal2">
+            <h2>🖼️ Soal 2: Representasi Citra Digital</h2>
+            <p><strong>Bobot: 20 | Topik: Representasi Citra Digital</strong></p>
+
+            <h3>2.1 Bagaimana Citra Dibaca oleh Python</h3>
+            <div class="code-box">
+<span class="comment"># Ada 2 library utama untuk membaca citra di Python:</span>
+
+<span class="comment"># 1. OpenCV (cv2) - format BGR</span>
+img_bgr = cv2.imread('path/to/image.jpg')
+
+<span class="comment"># 2. PIL (Python Imaging Library) - format RGB</span>
+from PIL import Image
+img_pil = Image.open('path/to/image.jpg')
+
+<span class="comment"># Program kita menggunakan OpenCV, jadi perlu konversi BGR → RGB:</span>
+img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+            </div>
+
+            <div class="highlight info">
+                <p><strong>🔍 Mengapa Perlu Konversi BGR ke RGB?</strong></p>
+                <ul>
+                    <li><strong>OpenCV (cv2.imread):</strong> Membaca citra dalam format BGR (Blue-Green-Red)</li>
+                    <li><strong>Matplotlib & Neural Network:</strong> Mengharapkan format RGB (Red-Green-Blue)</li>
+                    <li><strong>Tanpa konversi:</strong> Warna akan terbalik (merah jadi biru, biru jadi merah)</li>
+                </ul>
+            </div>
+
+            <h3>2.2 Format dan Ukuran Citra</h3>
+            <div class="code-box">
+<span class="comment"># Informasi citra yang dibaca:</span>
+
+print(f'Tipe data      : {img_bgr.dtype}')       <span class="comment"># uint8</span>
+print(f'Shape (HxWxC)  : {img_bgr.shape}')       <span class="comment"># (tinggi, lebar, channel)</span>
+print(f'Tinggi         : {img_bgr.shape[0]} px')
+print(f'Lebar          : {img_bgr.shape[1]} px')
+print(f'Channel warna  : {img_bgr.shape[2]}')    <span class="comment"># 3 untuk RGB/BGR</span>
+print(f'Nilai min-max  : {img_bgr.min()} - {img_bgr.max()}')  <span class="comment"># 0-255</span>
+            </div>
+
+            <table>
+                <tr>
+                    <th>Properti</th>
+                    <th>Nilai</th>
+                    <th>Penjelasan</th>
+                </tr>
+                <tr>
+                    <td><strong>Tipe Data</strong></td>
+                    <td>uint8</td>
+                    <td>Unsigned integer 8-bit (nilai 0-255)</td>
+                </tr>
+                <tr>
+                    <td><strong>Shape</strong></td>
+                    <td>(256, 256, 3)</td>
+                    <td>Tinggi × Lebar × Channel warna</td>
+                </tr>
+                <tr>
+                    <td><strong>Channel</strong></td>
+                    <td>3 (BGR/RGB)</td>
+                    <td>Blue, Green, Red atau Red, Green, Blue</td>
+                </tr>
+                <tr>
+                    <td><strong>Nilai Pixel</strong></td>
+                    <td>0 - 255</td>
+                    <td>0 = hitam, 255 = putih/warna terang</td>
+                </tr>
+                <tr>
+                    <td><strong>Format File</strong></td>
+                    <td>JPG/JPEG</td>
+                    <td>Format kompresi dengan lossy compression</td>
+                </tr>
+            </table>
+
+            <h3>2.3 Representasi Citra (RGB/Grayscale/Pixel Array)</h3>
+            
+            <h4>A. Citra RGB (3 Channel)</h4>
+            <div class="highlight">
+                <p>Citra RGB terdiri dari <strong>3 channel warna</strong> (Red, Green, Blue):</p>
+                <div class="formula">
+                    Image<sub>RGB</sub> = [R, G, B]<br>
+                    Dimensi = (Height, Width, 3)
+                </div>
+                <p>Setiap pixel memiliki 3 nilai (R, G, B), masing-masing berkisar 0-255.</p>
+            </div>
+
+            <div class="code-box">
+<span class="comment"># Contoh representasi pixel RGB:</span>
+
+img_rgb[:5, :5, 0]  <span class="comment"># Channel Red (5×5 pixel pertama)</span>
+<span class="comment"># Output: array nilai intensitas merah di pojok kiri atas</span>
+<span class="comment"># [[201 201 201 200 200]</span>
+<span class="comment">#  [201 201 201 200 200]</span>
+<span class="comment">#  [201 201 201 200 200]</span>
+<span class="comment">#  [201 201 201 200 200]</span>
+<span class="comment">#  [201 201 201 200 200]]</span>
+
+<span class="comment"># Visualisasi channel RGB secara terpisah:</span>
+fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+
+axes[0].imshow(img_rgb)                      <span class="comment"># Citra asli RGB</span>
+axes[1].imshow(img_rgb[:, :, 0], cmap='Reds')  <span class="comment"># Channel Red</span>
+axes[2].imshow(img_rgb[:, :, 1], cmap='Greens') <span class="comment"># Channel Green</span>
+axes[3].imshow(img_rgb[:, :, 2], cmap='Blues')  <span class="comment"># Channel Blue</span>
+            </div>
+
+            <h4>B. Citra Grayscale (1 Channel)</h4>
+            <div class="highlight">
+                <p>Citra grayscale hanya memiliki <strong>1 channel</strong> (intensitas abu-abu):</p>
+                <div class="formula">
+                    Gray = 0.299 × R + 0.587 × G + 0.114 × B<br>
+                    Dimensi = (Height, Width)
+                </div>
+                <p>Konversi RGB ke Grayscale menggunakan weighted average (mata manusia lebih sensitif terhadap hijau).</p>
+            </div>
+
+            <div class="code-box">
+<span class="comment"># Konversi RGB ke Grayscale:</span>
+img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+
+<span class="comment"># Sekarang shape menjadi (Height, Width) tanpa channel</span>
+print(img_gray.shape)  <span class="comment"># Output: (224, 224)</span>
+            </div>
+
+            <h4>C. Pixel Array (Numpy Array)</h4>
+            <div class="highlight">
+                <p>Dalam Python, citra direpresentasikan sebagai <strong>Numpy Array</strong>:</p>
+                <ul>
+                    <li>✅ <strong>Akses cepat:</strong> Operasi vektor yang efisien</li>
+                    <li>✅ <strong>Manipulasi mudah:</strong> Operasi aritmatika langsung pada pixel</li>
+                    <li>✅ <strong>Kompatibilitas:</strong> Bekerja dengan library ML seperti TensorFlow</li>
+                </ul>
+            </div>
+
+            <div class="code-box">
+<span class="comment"># Citra sebagai Numpy array:</span>
+type(img_rgb)  <span class="comment"># Output: numpy.ndarray</span>
+
+<span class="comment"># Akses pixel individual:</span>
+pixel = img_rgb[100, 150]  <span class="comment"># Pixel di baris 100, kolom 150</span>
+print(pixel)  <span class="comment"># Output: [R_value, G_value, B_value]</span>
+
+<span class="comment"># Operasi pada semua pixel sekaligus (normalisasi):</span>
+img_normalized = img_rgb.astype('float32') / 255.0
+<span class="comment"># Semua nilai pixel dibagi 255 → range 0.0 - 1.0</span>
+            </div>
+        </div>
+
+        <!-- SOAL 3: TEKNIK PENGOLAHAN CITRA -->
+        <div class="section" id="soal3">
+            <h2>⚙️ Soal 3: Teknik Pengolahan Citra</h2>
+            <p><strong>Bobot: 30 | Topik: Teknik Pengolahan Citra</strong></p>
+
+            <div class="highlight warning">
+                <p><strong>⚠️ 7 Tahapan Preprocessing yang Diterapkan:</strong></p>
+                <ol>
+                    <li>Resize (Penyeragaman Ukuran)</li>
+                    <li>Grayscale Conversion (Konversi Abu-abu)</li>
+                    <li>Normalisasi Pixel</li>
+                    <li>Gaussian Blur (Filtering)</li>
+                    <li>Segmentasi (Otsu Thresholding)</li>
+                    <li>Edge Detection (Canny)</li>
+                    <li>Ekstraksi Fitur (Histogram Warna)</li>
+                </ol>
+            </div>
+
+            <h3>3.1 Proses 1: RESIZE (Penyeragaman Ukuran)</h3>
+            <div class="code-box">
+IMG_SIZE = (224, 224)
+img_resized = cv2.resize(img_rgb, IMG_SIZE)
+
+print(f'Ukuran asli   : {img_rgb.shape[:2]}')     <span class="comment"># (256, 256)</span>
+print(f'Ukuran resize : {img_resized.shape[:2]}')  <span class="comment"># (224, 224)</span>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">🔹 Fungsi:</div>
+                <div class="answer">
+                    Menyeragamkan ukuran semua citra menjadi 224×224 pixel agar konsisten untuk input model CNN.
+                </div>
+
+                <div class="question">🔹 Alasan Penggunaan:</div>
+                <div class="answer">
+                    <ul>
+                        <li><strong>Konsistensi Input:</strong> Model CNN memerlukan input dengan ukuran tetap</li>
+                        <li><strong>Arsitektur MobileNetV2:</strong> Dirancang untuk input 224×224 px</li>
+                        <li><strong>Efisiensi Komputasi:</strong> Ukuran lebih kecil = training lebih cepat</li>
+                        <li><strong>Standar ImageNet:</strong> Ukuran 224×224 adalah standar pada transfer learning</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>3.2 Proses 2: GRAYSCALE (Konversi Abu-abu)</h3>
+            <div class="code-box">
+img_gray = cv2.cvtColor(img_resized, cv2.COLOR_RGB2GRAY)
+
+print(f'Shape RGB       : {img_resized.shape}')  <span class="comment"># (224, 224, 3)</span>
+print(f'Shape Grayscale : {img_gray.shape}')     <span class="comment"># (224, 224)</span>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">🔹 Fungsi:</div>
+                <div class="answer">
+                    Mengubah citra berwarna (3 channel RGB) menjadi citra abu-abu (1 channel).
+                </div>
+
+                <div class="question">🔹 Alasan Penggunaan:</div>
+                <div class="answer">
+                    <ul>
+                        <li><strong>Reduksi Dimensi:</strong> Mengurangi 3 channel menjadi 1</li>
+                        <li><strong>Fokus pada Struktur:</strong> Analisis bentuk tanpa gangguan warna</li>
+                        <li><strong>Preprocessing Edge Detection:</strong> Canny memerlukan grayscale</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>3.3 Proses 3: NORMALISASI PIXEL</h3>
+            <div class="code-box">
+img_normalized = img_resized.astype('float32') / 255.0
+            </div>
+
+            <div class="qa-box">
+                <div class="question">🔹 Fungsi:</div>
+                <div class="answer">
+                    Mengubah nilai pixel dari rentang 0-255 menjadi 0.0-1.0.
+                </div>
+
+                <div class="question">🔹 Alasan Penggunaan:</div>
+                <div class="answer">
+                    <ul>
+                        <li><strong>Stabilitas Training:</strong> Gradient descent lebih stabil</li>
+                        <li><strong>Konvergensi Cepat:</strong> Model belajar lebih efisien</li>
+                        <li><strong>Standar Neural Network:</strong> Pre-trained model butuh input 0-1</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>3.4 Proses 4: GAUSSIAN BLUR (Filtering)</h3>
+            <div class="code-box">
+img_blur = cv2.GaussianBlur(img_gray, (5, 5), 0)
+            </div>
+
+            <div class="qa-box">
+                <div class="question">🔹 Fungsi:</div>
+                <div class="answer">
+                    Menghaluskan citra dan mengurangi noise menggunakan kernel Gaussian 5×5.
+                </div>
+
+                <div class="question">🔹 Alasan Penggunaan:</div>
+                <div class="answer">
+                    <ul>
+                        <li><strong>Noise Reduction:</strong> Menghilangkan gangguan kecil pada citra</li>
+                        <li><strong>Smoothing:</strong> Membuat transisi antar pixel lebih halus</li>
+                        <li><strong>Preprocessing Segmentasi:</strong> Hasil thresholding lebih baik</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>3.5 Proses 5: SEGMENTASI (Otsu Thresholding)</h3>
+            <div class="code-box">
+_, img_thresh = cv2.threshold(img_blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            </div>
+
+            <div class="qa-box">
+                <div class="question">🔹 Fungsi:</div>
+                <div class="answer">
+                    Memisahkan objek dari latar belakang menggunakan metode Otsu's thresholding.
+                </div>
+
+                <div class="question">🔹 Alasan Penggunaan:</div>
+                <div class="answer">
+                    <ul>
+                        <li><strong>Pemisahan Objek-Background:</strong> Otomatis menentukan threshold optimal</li>
+                        <li><strong>Otsu Algorithm:</strong> Mencari threshold yang memaksimalkan variance antar kelas</li>
+                        <li><strong>Ekstraksi Objek:</strong> Memudahkan analisis bentuk objek sampah</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>3.6 Proses 6: EDGE DETECTION (Canny)</h3>
+            <div class="code-box">
+img_edges = cv2.Canny(img_gray, threshold1=50, threshold2=150)
+            </div>
+
+            <div class="qa-box">
+                <div class="question">🔹 Fungsi:</div>
+                <div class="answer">
+                    Mendeteksi tepi/kontur objek dalam citra menggunakan algoritma Canny.
+                </div>
+
+                <div class="question">🔹 Alasan Penggunaan:</div>
+                <div class="answer">
+                    <ul>
+                        <li><strong>Deteksi Bentuk:</strong> Mengidentifikasi batas objek dengan akurat</li>
+                        <li><strong>Analisis Struktur:</strong> Membantu CNN mengenali pola geometris sampah</li>
+                        <li><strong>Multi-stage Algorithm:</strong> Noise reduction → Gradient → Non-max suppression → Hysteresis</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>3.7 Proses 7: EKSTRAKSI FITUR (Histogram Warna)</h3>
+            <div class="code-box">
+hist_r = cv2.calcHist([img_resized], [0], None, [256], [0, 256])
+hist_g = cv2.calcHist([img_resized], [1], None, [256], [0, 256])
+hist_b = cv2.calcHist([img_resized], [2], None, [256], [0, 256])
+            </div>
+
+            <div class="qa-box">
+                <div class="question">🔹 Fungsi:</div>
+                <div class="answer">
+                    Mengekstrak distribusi warna dari citra sebagai representasi fitur.
+                </div>
+
+                <div class="question">🔹 Alasan Penggunaan:</div>
+                <div class="answer">
+                    <ul>
+                        <li><strong>Fitur Warna:</strong> Distribusi warna unik untuk tiap jenis sampah</li>
+                        <li><strong>Histogram 256 bins:</strong> Merepresentasikan frekuensi setiap intensitas warna</li>
+                        <li><strong>Karakteristik Material:</strong> Kaca, plastik, logam punya pola warna berbeda</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- SOAL 4: ALGORITMA CNN - MobileNetV2 -->
+        <div class="section" id="soal4">
+            <h2>🤖 Soal 4: Aplikasi Pengolahan Citra (CNN - MobileNetV2)</h2>
+            <p><strong>Bobot: 15 | Topik: Algoritma Machine Learning untuk Citra</strong></p>
+
+            <h3>4.1 Nama Algoritma yang Digunakan</h3>
+            <div class="info-box">
+                <h3>Convolutional Neural Network (CNN) dengan Transfer Learning</h3>
+                <p><strong>Arsitektur Spesifik:</strong> MobileNetV2 (pre-trained on ImageNet)</p>
+                <ul>
+                    <li>🔸 Base Model: MobileNetV2 (dari TensorFlow/Keras)</li>
+                    <li>🔸 Teknik: Transfer Learning</li>
+                    <li>🔸 Custom Head: GlobalAveragePooling2D + Dense layers</li>
+                    <li>🔸 Output: 6 kelas (cardboard, glass, metal, paper, plastic, trash)</li>
+                </ul>
+            </div>
+
+            <h3>4.2 Apa itu CNN (Convolutional Neural Network)?</h3>
+            <div class="highlight info">
+                <p><strong>CNN</strong> adalah jenis neural network yang dirancang khusus untuk memproses data berbentuk grid seperti gambar.</p>
+                <br>
+                <p><strong>Perbedaan dengan Neural Network Biasa:</strong></p>
+                <ul>
+                    <li>✅ <strong>Preservasi Struktur Spasial:</strong> CNN mempertahankan hubungan antar pixel</li>
+                    <li>✅ <strong>Parameter Sharing:</strong> Filter yang sama digunakan di seluruh gambar</li>
+                    <li>✅ <strong>Translation Invariance:</strong> Dapat mengenali objek di posisi berbeda</li>
+                </ul>
+            </div>
+
+            <h4>Komponen Utama CNN:</h4>
+            <table>
+                <tr>
+                    <th>Layer</th>
+                    <th>Fungsi</th>
+                    <th>Operasi</th>
+                </tr>
+                <tr>
+                    <td><strong>Convolutional Layer</strong></td>
+                    <td>Ekstraksi fitur lokal</td>
+                    <td>Filter/kernel mengekstrak pola (edges, textures)</td>
+                </tr>
+                <tr>
+                    <td><strong>Activation (ReLU)</strong></td>
+                    <td>Non-linearity</td>
+                    <td>ReLU(x) = max(0, x) - menghilangkan nilai negatif</td>
+                </tr>
+                <tr>
+                    <td><strong>Pooling Layer</strong></td>
+                    <td>Downsampling</td>
+                    <td>Mengurangi dimensi, ambil nilai max/average</td>
+                </tr>
+                <tr>
+                    <td><strong>Fully Connected</strong></td>
+                    <td>Klasifikasi</td>
+                    <td>Dense layer untuk prediksi akhir</td>
+                </tr>
+            </table>
+
+            <h3>4.3 Cara Kerja CNN Secara Hierarkis</h3>
+            <div class="code-box">
+<span class="comment"># Proses hierarkis CNN:</span>
+
+Input Image (224×224×3)
+    ↓
+[Layer 1] Deteksi Edges (tepi, garis)
+    ↓
+[Layer 2] Deteksi Textures (pola tekstur)
+    ↓
+[Layer 3] Deteksi Shapes (bentuk objek)
+    ↓
+[Layer 4] Deteksi Parts (bagian objek)
+    ↓
+[Layer 5] Deteksi Objects (objek lengkap)
+    ↓
+Output: Probabilitas 6 kelas
+            </div>
+
+            <div class="highlight">
+                <p><strong>📌 Konsep "Feature Hierarchy":</strong></p>
+                <ul>
+                    <li><strong>Layer Awal:</strong> Mendeteksi fitur sederhana (edges, corners)</li>
+                    <li><strong>Layer Tengah:</strong> Menggabungkan edges menjadi tekstur dan pola</li>
+                    <li><strong>Layer Akhir:</strong> Mengenali objek kompleks (bentuk botol, kaleng, dll)</li>
+                </ul>
+            </div>
+
+            <h3>4.4 Transfer Learning: Mengapa Menggunakan MobileNetV2?</h3>
+            <div class="qa-box">
+                <div class="question">🔹 Apa itu Transfer Learning?</div>
+                <div class="answer">
+                    <p><strong>Transfer Learning</strong> adalah teknik menggunakan model yang sudah dilatih pada dataset besar (ImageNet) dan mengadaptasinya untuk task baru (garbage classification).</p>
+                    <br>
+                    <div class="formula">
+                        Model Pre-trained (ImageNet 1.4M images) → Fine-tune → Garbage Classification (13.9K images)
+                    </div>
+                </div>
+
+                <div class="question">🔹 Keuntungan Transfer Learning:</div>
+                <div class="answer">
+                    <ul>
+                        <li>⚡ <strong>Training Lebih Cepat:</strong> Tidak perlu train dari nol</li>
+                        <li>📊 <strong>Akurasi Lebih Tinggi:</strong> Model sudah belajar fitur visual umum</li>
+                        <li>💾 <strong>Data Requirement Lebih Kecil:</strong> Cukup 13K gambar vs 1M+</li>
+                        <li>🎯 <strong>Generalisasi Lebih Baik:</strong> Menghindari overfitting</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>4.5 Arsitektur MobileNetV2</h3>
+            <div class="highlight info">
+                <p><strong>MobileNetV2</strong> adalah arsitektur CNN yang dioptimalkan untuk perangkat mobile/embedded dengan resource terbatas.</p>
+            </div>
+
+            <h4>Karakteristik MobileNetV2:</h4>
+            <table>
+                <tr>
+                    <th>Fitur</th>
+                    <th>Deskripsi</th>
+                    <th>Keuntungan</th>
+                </tr>
+                <tr>
+                    <td><strong>Depthwise Separable Convolution</strong></td>
+                    <td>Memisahkan spatial dan channel-wise convolution</td>
+                    <td>Mengurangi komputasi hingga 8-9x</td>
+                </tr>
+                <tr>
+                    <td><strong>Inverted Residuals</strong></td>
+                    <td>Expand → Depthwise → Project</td>
+                    <td>Efisiensi memori dan akurasi tinggi</td>
+                </tr>
+                <tr>
+                    <td><strong>Linear Bottlenecks</strong></td>
+                    <td>Tidak ada ReLU di projection layer</td>
+                    <td>Mempertahankan informasi penting</td>
+                </tr>
+                <tr>
+                    <td><strong>Total Parameters</strong></td>
+                    <td>~3.5 juta (base model)</td>
+                    <td>Ringan, cocok untuk deployment</td>
+                </tr>
+            </table>
+
+            <h3>4.6 Arsitektur Model dalam Program Kita</h3>
+            <div class="code-box">
+<span class="comment"># Struktur model lengkap:</span>
+
+Input: (224, 224, 3)
+    ↓
+<span class="keyword">BASE MODEL: MobileNetV2 (pre-trained ImageNet)</span>
+    - 53 Convolutional Layers
+    - Depthwise Separable Convolutions
+    - Inverted Residual Blocks
+    - Output shape: (7, 7, 1280)
+    ↓
+<span class="keyword">CUSTOM CLASSIFICATION HEAD:</span>
+    - GlobalAveragePooling2D → (1280,)
+    - Dense(256, activation='relu') → (256,)
+    - Dropout(0.5) → regularisasi
+    - Dense(6, activation='softmax') → (6,)
+    ↓
+Output: [P(cardboard), P(glass), P(metal), P(paper), P(plastic), P(trash)]
+            </div>
+
+            <div class="highlight success">
+                <p><strong>✅ Penjelasan Setiap Layer:</strong></p>
+                <ul>
+                    <li><strong>GlobalAveragePooling2D:</strong> Mengambil rata-rata setiap feature map (7×7×1280 → 1280)</li>
+                    <li><strong>Dense(256, relu):</strong> Fully connected layer dengan 256 neuron untuk representasi fitur tingkat tinggi</li>
+                    <li><strong>Dropout(0.5):</strong> Randomly "mematikan" 50% neuron saat training untuk mencegah overfitting</li>
+                    <li><strong>Dense(6, softmax):</strong> Output layer dengan softmax untuk probabilitas 6 kelas (total = 1.0)</li>
+                </ul>
+            </div>
+
+            <h3>4.7 Fungsi Algoritma Terhadap Citra</h3>
+            <div class="qa-box">
+                <div class="question">🔹 Bagaimana CNN Memproses Citra Sampah?</div>
+                <div class="answer">
+                    <ol>
+                        <li><strong>Input Preprocessing:</strong> Citra di-resize ke 224×224 dan dinormalisasi (0-1)</li>
+                        <li><strong>Feature Extraction (MobileNetV2):</strong>
+                            <ul>
+                                <li>Layer awal: Deteksi edges dan tekstur material (kaca = smooth, kardus = rough)</li>
+                                <li>Layer tengah: Pola warna (plastik = colorful, metal = shiny)</li>
+                                <li>Layer akhir: Bentuk objek (botol, kaleng, kertas)</li>
+                            </ul>
+                        </li>
+                        <li><strong>Feature Aggregation (GlobalAveragePooling):</strong> Rangkum semua fitur spasial</li>
+                        <li><strong>Classification (Dense Layers):</strong> Mapping fitur ke probabilitas kelas</li>
+                        <li><strong>Prediction:</strong> Pilih kelas dengan probabilitas tertinggi</li>
+                    </ol>
+                </div>
+            </div>
+
+            <h3>4.8 Hubungan Pengolahan Citra dengan Pengenalan Objek</h3>
+            <div class="highlight warning">
+                <p><strong>🔗 Integrasi Pengolahan Citra Tradisional dan Deep Learning:</strong></p>
+                <table style="margin-top: 15px;">
+                    <tr>
+                        <th>Tahap</th>
+                        <th>Teknik</th>
+                        <th>Kontribusi</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Preprocessing</strong></td>
+                        <td>Resize, Normalisasi</td>
+                        <td>Standarisasi input untuk CNN</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Noise Reduction</strong></td>
+                        <td>Gaussian Blur</td>
+                        <td>Membersihkan citra sebelum ekstraksi fitur</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Feature Extraction</strong></td>
+                        <td>CNN (Convolutional Layers)</td>
+                        <td>Otomatis belajar fitur terbaik untuk klasifikasi</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Segmentasi</strong></td>
+                        <td>Otsu Thresholding</td>
+                        <td>Memisahkan objek dari background</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Edge Detection</strong></td>
+                        <td>Canny</td>
+                        <td>Membantu CNN fokus pada batas objek</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Classification</strong></td>
+                        <td>Softmax Layer</td>
+                        <td>Menghasilkan probabilitas tiap kelas</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="code-box">
+<span class="comment"># Contoh prediksi:</span>
+
+Input: gambar_botol_plastik.jpg
+    ↓
+CNN Processing...
+    ↓
+Output Probabilities:
+    - cardboard: 0.05 (5%)
+    - glass:     0.08 (8%)
+    - metal:     0.03 (3%)
+    - paper:     0.02 (2%)
+    - plastic:   0.79 (79%) ← PREDICTED CLASS
+    - trash:     0.03 (3%)
+            </div>
+        </div>
+
+        <!-- SOAL 5: ANALISIS HASIL -->
+        <div class="section" id="soal5">
+            <h2>📊 Soal 5: Analisis Hasil</h2>
+            <p><strong>Bobot: 15 | Topik: Evaluasi dan Analisis Model</strong></p>
+
+            <h3>5.1 Input Citra yang Diuji</h3>
+            <div class="highlight">
+                <p><strong>Dataset Split:</strong></p>
+                <ul>
+                    <li>📁 <strong>Training Set:</strong> 11,123 gambar (80% dari total)</li>
+                    <li>📁 <strong>Validation Set:</strong> 2,778 gambar (20% dari total)</li>
+                </ul>
+                <br>
+                <p>Model dilatih menggunakan <strong>data augmentation</strong> pada training set:</p>
+                <ul>
+                    <li>Rotasi acak ±20°</li>
+                    <li>Pergeseran horizontal/vertikal 20%</li>
+                    <li>Shear transform 20%</li>
+                    <li>Zoom acak 20%</li>
+                    <li>Horizontal flip</li>
+                </ul>
+            </div>
+
+            <h3>5.2 Output Program</h3>
+            <div class="info-box">
+                <h3>Hasil Training Model (20 Epochs)</h3>
+                <table style="background: white; margin-top: 15px;">
+                    <tr>
+                        <th>Metrik</th>
+                        <th>Training</th>
+                        <th>Validation</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Accuracy</strong></td>
+                        <td>92.03%</td>
+                        <td><strong>91.79%</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Loss</strong></td>
+                        <td>0.2181</td>
+                        <td><strong>0.2597</strong></td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>5.3 Classification Report (Detail per Kelas)</h3>
+            <table>
+                <tr>
+                    <th>Kelas</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>F1-Score</th>
+                    <th>Support</th>
+                </tr>
+                <tr>
+                    <td><strong>cardboard</strong></td>
+                    <td>0.94</td>
+                    <td>0.93</td>
+                    <td>0.94</td>
+                    <td>442</td>
+                </tr>
+                <tr>
+                    <td><strong>glass</strong></td>
+                    <td>0.93</td>
+                    <td>0.89</td>
+                    <td>0.91</td>
+                    <td>500</td>
+                </tr>
+                <tr>
+                    <td><strong>metal</strong></td>
+                    <td>0.88</td>
+                    <td>0.97</td>
+                    <td>0.93</td>
+                    <td>416</td>
+                </tr>
+                <tr>
+                    <td><strong>paper</strong></td>
+                    <td>0.91</td>
+                    <td>0.95</td>
+                    <td>0.93</td>
+                    <td>463</td>
+                </tr>
+                <tr>
+                    <td><strong>plastic</strong></td>
+                    <td>0.91</td>
+                    <td>0.91</td>
+                    <td>0.91</td>
+                    <td>457</td>
+                </tr>
+                <tr>
+                    <td><strong>trash</strong></td>
+                    <td>0.94</td>
+                    <td>0.86</td>
+                    <td>0.90</td>
+                    <td>500</td>
+                </tr>
+                <tr style="background: #667eea; color: white; font-weight: bold;">
+                    <td>Weighted Avg</td>
+                    <td>0.92</td>
+                    <td>0.92</td>
+                    <td>0.92</td>
+                    <td>2778</td>
+                </tr>
+            </table>
+
+            <div class="qa-box">
+                <div class="question">📌 Penjelasan Metrik:</div>
+                <div class="answer">
+                    <ul>
+                        <li><strong>Precision:</strong> Dari semua prediksi kelas X, berapa persen yang benar?
+                            <div class="formula">Precision = TP / (TP + FP)</div>
+                        </li>
+                        <li><strong>Recall:</strong> Dari semua data kelas X yang sebenarnya, berapa persen yang terdeteksi?
+                            <div class="formula">Recall = TP / (TP + FN)</div>
+                        </li>
+                        <li><strong>F1-Score:</strong> Harmonic mean dari Precision dan Recall
+                            <div class="formula">F1 = 2 × (Precision × Recall) / (Precision + Recall)</div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>5.4 Analisis Performance per Kelas</h3>
+            
+            <h4>🏆 Kelas dengan Performance Terbaik:</h4>
+            <div class="highlight success">
+                <p><strong>1. Cardboard (F1: 0.94)</strong></p>
+                <ul>
+                    <li>Precision tinggi (0.94): Jarang salah prediksi sebagai cardboard</li>
+                    <li>Recall tinggi (0.93): Hampir semua cardboard terdeteksi</li>
+                    <li>Alasan: Tekstur dan warna kardus sangat khas</li>
+                </ul>
+                <br>
+                <p><strong>2. Metal (F1: 0.93)</strong></p>
+                <ul>
+                    <li>Recall sangat tinggi (0.97): Nyaris tidak ada metal yang terlewat</li>
+                    <li>Precision cukup (0.88): Kadang metal dikira kaca (keduanya shiny)</li>
+                    <li>Alasan: Refleksi cahaya logam sangat distinctive</li>
+                </ul>
+            </div>
+
+            <h4>⚠️ Kelas dengan Confusion:</h4>
+            <div class="highlight warning">
+                <p><strong>1. Trash (F1: 0.90)</strong></p>
+                <ul>
+                    <li>Recall rendah (0.86): 14% trash salah diklasifikasi ke kelas lain</li>
+                    <li>Alasan: Kategori "trash" sangat beragam (organik, campuran)</li>
+                </ul>
+                <br>
+                <p><strong>2. Glass (F1: 0.91)</strong></p>
+                <ul>
+                    <li>Recall 0.89: Beberapa glass dikira metal/plastic</li>
+                    <li>Alasan: Transparansi dan refleksi mirip dengan material lain</li>
+                </ul>
+            </div>
+
+            <h3>5.5 Confusion Matrix Analysis</h3>
+            <div class="code-box">
+<span class="comment"># Contoh dari Confusion Matrix:</span>
+
+Prediksi METAL → Sebenarnya GLASS: 15 kasus
+<span class="comment"># Kedua material punya refleksi cahaya yang mirip</span>
+
+Prediksi TRASH → Sebenarnya PAPER: 12 kasus
+<span class="comment"># Kertas kusut/kotor bisa terlihat seperti trash organik</span>
+
+Prediksi PLASTIC → Sebenarnya CARDBOARD: 8 kasus
+<span class="comment"># Kemasan plastik warna coklat mirip kardus</span>
+            </div>
+
+            <h3>5.6 Kesimpulan: Apakah Program Berhasil?</h3>
+            <div class="info-box" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <h3>✅ KESIMPULAN: PROGRAM SANGAT BERHASIL</h3>
+                <br>
+                <p><strong>Bukti Keberhasilan:</strong></p>
+                <ul style="font-size: 1.05em;">
+                    <li>🎯 <strong>Akurasi 91.79%</strong> - Jauh di atas threshold 85% untuk aplikasi praktis</li>
+                    <li>🎯 <strong>Balanced Performance</strong> - Semua kelas F1-score ≥ 0.90</li>
+                    <li>🎯 <strong>Generalisasi Baik</strong> - Gap training-validation hanya 0.24%</li>
+                    <li>🎯 <strong>Tidak Overfitting</strong> - Loss validation (0.26) mendekati loss training (0.22)</li>
+                </ul>
+                <br>
+                <p><strong>Interpretasi untuk Aplikasi Nyata:</strong></p>
+                <ul>
+                    <li>📱 Model siap di-deploy untuk sistem pemilahan sampah otomatis</li>
+                    <li>📱 Dari 100 sampah, model akan mengklasifikasi 92 dengan benar</li>
+                    <li>📱 Tingkat error 8% masih acceptable untuk screening awal</li>
+                </ul>
+            </div>
+
+            <h3>5.7 Rekomendasi Improvement</h3>
+            <div class="highlight">
+                <p><strong>Untuk meningkatkan akurasi lebih lanjut:</strong></p>
+                <ol>
+                    <li><strong>Fine-tuning:</strong> Unfreeze beberapa layer akhir MobileNetV2 dan train ulang</li>
+                    <li><strong>Data Augmentation Lanjutan:</strong> Tambahkan color jitter, brightness adjustment</li>
+                    <li><strong>Ensemble Model:</strong> Gabungkan MobileNetV2 dengan EfficientNet atau ResNet</li>
+                    <li><strong>Handle Edge Cases:</strong> Tambahkan data trash yang lebih bervariasi</li>
+                    <li><strong>Post-processing:</strong> Gunakan voting dari multiple crops untuk prediksi</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- PENJELASAN KODE BARIS PER BARIS -->
+        <div class="section" id="code">
+            <h2>💻 Penjelasan Kode Baris per Baris</h2>
+            
+            <h3>6.1 Import Libraries</h3>
+            <div class="code-box">
+<span class="keyword">import</span> os                    <span class="comment"># Operasi file/folder (path, listdir)</span>
+<span class="keyword">import</span> numpy <span class="keyword">as</span> np           <span class="comment"># Array operations, matematik</span>
+<span class="keyword">import</span> matplotlib.pyplot <span class="keyword">as</span> plt  <span class="comment"># Visualisasi plot</span>
+<span class="keyword">import</span> cv2                   <span class="comment"># OpenCV - baca/proses citra</span>
+<span class="keyword">from</span> PIL <span class="keyword">import</span> Image         <span class="comment"># Python Imaging Library</span>
+
+<span class="keyword">import</span> tensorflow <span class="keyword">as</span> tf
+<span class="keyword">from</span> tensorflow.keras.applications <span class="keyword">import</span> MobileNetV2
+<span class="keyword">from</span> tensorflow.keras.models <span class="keyword">import</span> Model
+<span class="keyword">from</span> tensorflow.keras.layers <span class="keyword">import</span> Dense, GlobalAveragePooling2D, Dropout
+<span class="keyword">from</span> tensorflow.keras.preprocessing.image <span class="keyword">import</span> ImageDataGenerator
+<span class="keyword">from</span> tensorflow.keras.optimizers <span class="keyword">import</span> Adam
+<span class="keyword">from</span> tensorflow.keras.callbacks <span class="keyword">import</span> EarlyStopping, ReduceLROnPlateau
+
+<span class="keyword">from</span> sklearn.metrics <span class="keyword">import</span> classification_report, confusion_matrix
+<span class="keyword">import</span> seaborn <span class="keyword">as</span> sns
+            </div>
+
+            <h3>6.2 Load dan Eksplorasi Dataset</h3>
+            <div class="code-box">
+DATASET_PATH = 'Trash_Dataset/images'
+CLASSES = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
+
+<span class="comment"># Loop untuk hitung jumlah gambar per kelas</span>
+for cls in CLASSES:
+    path = os.path.join(DATASET_PATH, cls)  <span class="comment"># Gabung path</span>
+    if os.path.exists(path):
+        count = len(os.listdir(path))  <span class="comment"># Hitung file dalam folder</span>
+        print(f'{cls:12s} : {count} gambar')
+            </div>
+            <div class="highlight">
+                <p><strong>Penjelasan:</strong></p>
+                <ul>
+                    <li><code>os.path.join()</code> → Menggabungkan path dengan aman (cross-platform)</li>
+                    <li><code>os.listdir()</code> → Mengambil list semua file dalam folder</li>
+                    <li><code>len()</code> → Menghitung jumlah file</li>
+                </ul>
+            </div>
+
+            <h3>6.3 Membaca dan Menampilkan Citra</h3>
+            <div class="code-box">
+img = cv2.imread(img_path)                <span class="comment"># Baca gambar (BGR format)</span>
+img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  <span class="comment"># Konversi BGR ke RGB</span>
+
+<span class="comment"># Menampilkan dengan matplotlib</span>
+plt.imshow(img_rgb)
+plt.title(f'Kelas: {cls}')
+plt.axis('off')  <span class="comment"># Hilangkan axis</span>
+plt.show()
+            </div>
+
+            <h3>6.4 Data Augmentation dengan ImageDataGenerator</h3>
+            <div class="code-box">
+train_datagen = ImageDataGenerator(
+    rescale=1./255,           <span class="comment"># Normalisasi: nilai 0-255 → 0-1</span>
+    rotation_range=20,        <span class="comment"># Rotasi acak ±20 derajat</span>
+    width_shift_range=0.2,    <span class="comment"># Geser horizontal 20%</span>
+    height_shift_range=0.2,   <span class="comment"># Geser vertikal 20%</span>
+    shear_range=0.2,          <span class="comment"># Shear transform (miring)</span>
+    zoom_range=0.2,           <span class="comment"># Zoom in/out 20%</span>
+    horizontal_flip=True,     <span class="comment"># Flip horizontal (mirror)</span>
+    validation_split=0.2      <span class="comment"># 20% untuk validasi</span>
+)
+            </div>
+            <div class="qa-box">
+                <div class="question">❓ Mengapa perlu Data Augmentation?</div>
+                <div class="answer">
+                    <ul>
+                        <li><strong>Meningkatkan Variasi Data:</strong> Dari 11K gambar → efektif jadi 50K+ variasi</li>
+                        <li><strong>Mencegah Overfitting:</strong> Model belajar pada data yang bervariasi</li>
+                        <li><strong>Robust terhadap Posisi:</strong> Sampah bisa difoto dari berbagai sudut</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>6.5 Load Data dengan flow_from_directory</h3>
+            <div class="code-box">
+train_generator = train_datagen.flow_from_directory(
+    DATASET_PATH,
+    target_size=(224, 224),   <span class="comment"># Resize semua ke 224×224</span>
+    batch_size=32,             <span class="comment"># Process 32 gambar per step</span>
+    class_mode='categorical',  <span class="comment"># One-hot encoding output</span>
+    subset='training',         <span class="comment"># Ambil 80% untuk training</span>
+    shuffle=True               <span class="comment"># Acak urutan data</span>
+)
+            </div>
+
+            <h3>6.6 Membangun Model MobileNetV2</h3>
+            <div class="code-box">
+<span class="comment"># Load base model (pre-trained)</span>
+base_model = MobileNetV2(
+    weights='imagenet',      <span class="comment"># Bobot dari ImageNet dataset</span>
+    include_top=False,       <span class="comment"># Buang layer classification asli</span>
+    input_shape=(224, 224, 3)
+)
+
+<span class="comment"># Freeze base model (tidak di-train ulang)</span>
+base_model.trainable = False
+
+<span class="comment"># Tambahkan custom classification head</span>
+x = base_model.output                    <span class="comment"># Output shape: (7, 7, 1280)</span>
+x = GlobalAveragePooling2D()(x)          <span class="comment"># Pool ke (1280,)</span>
+x = Dense(256, activation='relu')(x)     <span class="comment"># FC layer 256 neurons</span>
+x = Dropout(0.5)(x)                      <span class="comment"># Dropout 50%</span>
+output = Dense(6, activation='softmax')(x)  <span class="comment"># Output 6 kelas</span>
+
+model = Model(inputs=base_model.input, outputs=output)
+            </div>
+            <div class="highlight info">
+                <p><strong>Penjelasan Layer:</strong></p>
+                <ul>
+                    <li><strong>base_model.trainable = False:</strong> Freeze MobileNetV2 agar bobotnya tidak berubah saat training</li>
+                    <li><strong>GlobalAveragePooling2D:</strong> Ratakan setiap feature map (7×7) menjadi 1 nilai → mengurangi parameter</li>
+                    <li><strong>Dropout(0.5):</strong> Randomly "matikan" 50% neuron saat training untuk regularisasi</li>
+                    <li><strong>softmax:</strong> Konversi output menjadi probabilitas (total = 1.0)</li>
+                </ul>
+            </div>
+
+            <h3>6.7 Compile Model</h3>
+            <div class="code-box">
+model.compile(
+    optimizer=Adam(learning_rate=0.001),    <span class="comment"># Adam optimizer, LR=0.001</span>
+    loss='categorical_crossentropy',        <span class="comment"># Loss untuk multi-class</span>
+    metrics=['accuracy']                    <span class="comment"># Metrik evaluasi</span>
+)
+            </div>
+            <div class="qa-box">
+                <div class="question">❓ Mengapa Adam Optimizer?</div>
+                <div class="answer">
+                    <p>Adam (Adaptive Moment Estimation) menggabungkan keuntungan SGD dan RMSprop:</p>
+                    <ul>
+                        <li>✅ Adaptive learning rate per parameter</li>
+                        <li>✅ Momentum untuk hindari local minima</li>
+                        <li>✅ Konvergensi lebih cepat dari SGD biasa</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>6.8 Callbacks untuk Training</h3>
+            <div class="code-box">
+callbacks = [
+    <span class="comment"># Stop training jika validation accuracy tidak meningkat 5 epochs</span>
+    EarlyStopping(
+        monitor='val_accuracy',
+        patience=5,
+        restore_best_weights=True
+    ),
+    
+    <span class="comment"># Kurangi learning rate jika val_loss stuck</span>
+    ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.5,              <span class="comment"># LR baru = LR lama × 0.5</span>
+        patience=3,
+        min_lr=1e-6
+    )
+]
+            </div>
+
+            <h3>6.9 Training Model</h3>
+            <div class="code-box">
+history = model.fit(
+    train_generator,          <span class="comment"># Data training</span>
+    epochs=20,                <span class="comment"># Maksimal 20 epochs</span>
+    validation_data=val_generator,  <span class="comment"># Data validasi</span>
+    callbacks=callbacks,      <span class="comment"># Early stopping & LR scheduler</span>
+    verbose=1
+)
+            </div>
+            <div class="highlight warning">
+                <p><strong>⚠️ Proses Training:</strong></p>
+                <ol>
+                    <li><strong>Epoch 1:</strong> Model melihat semua training data (11K gambar) satu kali</li>
+                    <li><strong>Forward Pass:</strong> Hitung prediksi untuk batch 32 gambar</li>
+                    <li><strong>Loss Calculation:</strong> Bandingkan prediksi vs label asli</li>
+                    <li><strong>Backward Pass:</strong> Hitung gradient (backpropagation)</li>
+                    <li><strong>Update Weights:</strong> Adam optimizer update bobot</li>
+                    <li><strong>Validation:</strong> Test pada 2.7K gambar validasi (tanpa update bobot)</li>
+                    <li><strong>Repeat:</strong> Lanjut ke epoch berikutnya</li>
+                </ol>
+            </div>
+
+            <h3>6.10 Evaluasi Model</h3>
+            <div class="code-box">
+<span class="comment"># Prediksi pada validation set</span>
+y_pred_probs = model.predict(val_generator)  <span class="comment"># Probabilitas tiap kelas</span>
+y_pred = np.argmax(y_pred_probs, axis=1)     <span class="comment"># Ambil kelas dengan prob tertinggi</span>
+y_true = val_generator.classes               <span class="comment"># Label asli</span>
+
+<span class="comment"># Classification report</span>
+print(classification_report(y_true, y_pred, target_names=class_names))
+
+<span class="comment"># Confusion matrix</span>
+cm = confusion_matrix(y_true, y_pred)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+            </div>
+        </div>
+
+        <!-- DAFTAR LENGKAP CELL NOTEBOOK -->
+        <div class="section" id="cells">
+            <h2>📑 Daftar Lengkap 19 Cell Notebook</h2>
+            <p>Berikut adalah daftar lengkap semua cell dalam <code>UAS_Pengolahan_Citra_Garbage_Classification.ipynb</code>:</p>
+
+            <table>
+                <tr><th>No Cell</th><th>Tipe</th><th>Label</th><th>Deskripsi</th><th>Output</th></tr>
+                <tr>
+                    <td>1</td><td>Markdown</td><td>Judul</td>
+                    <td>Judul: "UAS Pengolahan Citra — Garbage Classification", info MK, dataset, algoritma, kelas</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td>2</td><td>Markdown</td><td>Install & Import</td>
+                    <td>Sub-judul: 📦 Install & Import Library</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">3</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Import Library</td>
+                    <td style="background:#e8f4fd;">Import os, numpy, matplotlib, cv2, PIL, tensorflow, MobileNetV2, Model, Dense, dll</td>
+                    <td style="background:#e8f4fd;">TensorFlow 2.21.0, "Semua library berhasil diimport!"</td>
+                </tr>
+                <tr>
+                    <td>4</td><td>Markdown</td><td>Soal 1</td>
+                    <td>Informasi dataset: nama, sumber Kaggle, tujuan, jumlah kelas (6)</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">5</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Dataset Info</td>
+                    <td style="background:#e8f4fd;">Hitung jumlah gambar per kelas dari folder, tampilkan statistik</td>
+                    <td style="background:#e8f4fd;">TOTAL 13.901 gambar (cardboard: 2214, glass: 2500, dst)</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">6</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Contoh Citra</td>
+                    <td style="background:#e8f4fd;">Tampilkan 6 gambar sample (1 per kelas) dalam grid 2x3 dengan ukuran</td>
+                    <td style="background:#e8f4fd;">Gambar + label kelas + ukuran pixel</td>
+                </tr>
+                <tr>
+                    <td>7</td><td>Markdown</td><td>Soal 2</td>
+                    <td>Sub-judul: 🖼️ Soal 2 — Representasi Citra Digital</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">8</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Info Representasi</td>
+                    <td style="background:#e8f4fd;">Baca 1 gambar plastic, tampilkan dtype uint8, shape (256,256,3), min-max pixel, contoh 5x5</td>
+                    <td style="background:#e8f4fd;">Tipe data, shape, nilai pixel channel R (5x5)</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">9</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Visualisasi RGB</td>
+                    <td style="background:#e8f4fd;">Visualisasi channel RGB terpisah (4 subplot: original + Red + Green + Blue)</td>
+                    <td style="background:#e8f4fd;">4 gambar (asli + 3 channel)</td>
+                </tr>
+                <tr>
+                    <td>10</td><td>Markdown</td><td>Soal 3</td>
+                    <td>Sub-judul: ⚙️ Soal 3 — Preprocessing / Teknik Pengolahan Citra</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">11</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">7 Tahap Preprocessing</td>
+                    <td style="background:#e8f4fd;">Resize (224,224), Grayscale, Normalisasi (÷255), Gaussian Blur (5,5), Otsu Thresholding, Canny Edge Detection, Histogram RGB</td>
+                    <td style="background:#e8f4fd;">Output 7 bar status preprocessing</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">12</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Visualisasi Preprocessing</td>
+                    <td style="background:#e8f4fd;">Tampilkan 7 subplot hasil preprocessing + plot histogram warna</td>
+                    <td style="background:#e8f4fd;">8 subplot visual (7 gambar + 1 histogram)</td>
+                </tr>
+                <tr>
+                    <td>13</td><td>Markdown</td><td>Soal 4</td>
+                    <td>Informasi algoritma: CNN MobileNetV2, ekstraksi fitur hierarkis, hubungan pengenalan objek</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">14</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Data Generator</td>
+                    <td style="background:#e8f4fd;">ImageDataGenerator dengan augmentasi (rotation, shift, shear, zoom, flip) + validation split 20%</td>
+                    <td style="background:#e8f4fd;">"Found 11123 images (training), 2778 images (validation)" + label mapping</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">15</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Bangun Model</td>
+                    <td style="background:#e8f4fd;">Load MobileNetV2 (imagenet weights), freeze base, tambah GAP + Dense(256) + Dropout(0.5) + Dense(6, softmax)</td>
+                    <td style="background:#e8f4fd;">Arsitektur model & total parameter: 2,587,462</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">16</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Training Model</td>
+                    <td style="background:#e8f4fd;">20 epochs, EarlyStopping + ReduceLROnPlateau callback, verbose=1</td>
+                    <td style="background:#e8f4fd;">20 epoch log: accuracy 71%→92%, val_accuracy 81%→91.79%</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">17</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Kurva Training</td>
+                    <td style="background:#e8f4fd;">Plot kurva accuracy & loss per epoch (training vs validation)</td>
+                    <td style="background:#e8f4fd;">2 grafik (accuracy + loss)</td>
+                </tr>
+                <tr>
+                    <td>18</td><td>Markdown</td><td>Soal 5</td>
+                    <td>Sub-judul: 📊 Soal 5 — Analisis Hasil</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">19</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Evaluasi Model</td>
+                    <td style="background:#e8f4fd;">model.evaluate() → validation loss & accuracy</td>
+                    <td style="background:#e8f4fd;">Validation Loss: 0.2597, Accuracy: 91.79%</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">20</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Classification Report</td>
+                    <td style="background:#e8f4fd;">model.predict() → argmax → classification_report dari sklearn</td>
+                    <td style="background:#e8f4fd;">Precision/Recall/F1 per kelas (Rata-rata: 0.92)</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">21</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Confusion Matrix</td>
+                    <td style="background:#e8f4fd;">confusion_matrix + sns.heatmap visual</td>
+                    <td style="background:#e8f4fd;">Heatmap 6×6 dengan nilai numerik</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">22</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Uji Prediksi</td>
+                    <td style="background:#e8f4fd;">Fungsi predict_image() + uji pada gambar glass index-5</td>
+                    <td style="background:#e8f4fd;">"Hasil: glass, Confidence: 99.99%, Prediksi Benar: True"</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">23</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Kesimpulan</td>
+                    <td style="background:#e8f4fd;">Cetak kesimpulan: dataset, model, akurasi, status berhasil/gagal</td>
+                    <td style="background:#e8f4fd;">"Model BERHASIL melakukan pengolahan citra dengan baik"</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">24</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Simpan Model (.h5)</td>
+                    <td style="background:#e8f4fd;">model.save() ke format HDF5</td>
+                    <td style="background:#e8f4fd;">"Model disimpan: garbage_classifier_mobilenetv2.h5"</td>
+                </tr>
+                <tr>
+                    <td style="background:#e8f4fd;">25</td><td style="background:#e8f4fd;">Kode</td><td style="background:#e8f4fd;">Simpan Model (.keras)</td>
+                    <td style="background:#e8f4fd;">model.save() ke format native Keras (modern)</td>
+                    <td style="background:#e8f4fd;">"Berhasil"</td>
+                </tr>
+            </table>
+
+            <div class="highlight info">
+                <p><strong>📌 Keterangan:</strong> Cell dengan background biru muda adalah <strong>code cell</strong>, yang putih adalah <strong>markdown cell</strong>. Total: 6 markdown + 19 kode = <strong>25 cell</strong> (2 cell judul/import di luar 19 yang running).</p>
+            </div>
+        </div>
+
+        <!-- PREDIKSI PERTANYAAN DOSEN -->
+        <div class="section" id="questions">
+            <h2>🎤 Prediksi Pertanyaan Dosen Saat Presentasi</h2>
+            <p><strong>Berikut 15 pertanyaan yang kemungkinan besar ditanyakan dosen beserta jawaban lengkapnya:</strong></p>
+
+            <div class="qa-box">
+                <div class="question">1. Mengapa memilih dataset Garbage Classification ini?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p>Saya memilih dataset ini karena relevan dengan isu lingkungan yang sedang urgent, yaitu pengelolaan sampah. Dataset ini memiliki karakteristik yang baik untuk pembelajaran:</p>
+                    <ul>
+                        <li>Dataset seimbang (13.901 gambar tersebar merata di 6 kelas)</li>
+                        <li>Kualitas citra baik dan beragam (berbagai angle, lighting)</li>
+                        <li>Aplikasi praktis jelas: sistem pemilahan sampah otomatis</li>
+                        <li>Kompleksitas cukup untuk demonstrasi teknik pengolahan citra</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">2. Jelaskan proses konversi BGR ke RGB, mengapa penting?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p>OpenCV membaca citra dalam format BGR (Blue-Green-Red), sedangkan Matplotlib dan neural network mengharapkan RGB (Red-Green-Blue). Konversi dilakukan dengan:</p>
+                    <div class="code-box" style="margin: 10px 0;">img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)</div>
+                    <p><strong>Pentingnya:</strong> Tanpa konversi, warna akan terbalik (merah jadi biru, biru jadi merah), yang akan membuat model belajar pola warna yang salah dan menurunkan akurasi.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">3. Dari 7 preprocessing yang diterapkan, mana yang paling critical dan mengapa?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p>Yang paling critical adalah <strong>Resize dan Normalisasi</strong>:</p>
+                    <ul>
+                        <li><strong>Resize (224×224):</strong> MUTLAK diperlukan karena CNN memerlukan input dengan dimensi tetap. Tanpa ini, model tidak bisa dilatih.</li>
+                        <li><strong>Normalisasi (0-1):</strong> Sangat critical untuk stabilitas training. Dengan nilai 0-255, gradient bisa explode/vanish. Normalisasi membuat convergence 3-5x lebih cepat.</li>
+                    </ul>
+                    <p>Sementara teknik lain (Gaussian Blur, Edge Detection) bersifat opsional untuk analisis tambahan.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">4. Bagaimana Gaussian Blur mengurangi noise? Jelaskan secara matematis!</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p>Gaussian Blur menggunakan kernel 5×5 dengan distribusi Gaussian:</p>
+                    <div class="formula">
+                        G(x, y) = (1 / 2πσ²) × e^(-(x²+y²) / 2σ²)
+                    </div>
+                    <p>Kernel ini di-convolve dengan citra, memberikan bobot lebih tinggi pada pixel pusat dan menurun ke tepi. Efeknya:</p>
+                    <ul>
+                        <li>Noise frekuensi tinggi (pixel acak) ter-smooth karena di-average dengan tetangganya</li>
+                        <li>Transisi tajam (edges) sedikit blur namun tetap terdeteksi</li>
+                        <li>Hasil: citra lebih halus, thresholding dan edge detection lebih akurat</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">5. Mengapa menggunakan Otsu thresholding, bukan manual threshold?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p><strong>Otsu's method</strong> secara otomatis mencari threshold optimal yang memaksimalkan variance antar kelas (background vs foreground).</p>
+                    <p><strong>Keunggulan:</strong></p>
+                    <ul>
+                        <li>Adaptive: Tidak perlu manual tuning threshold untuk tiap gambar</li>
+                        <li>Robust: Bekerja baik meski lighting berbeda-beda</li>
+                        <li>Optimal: Secara matematis mencari titik pemisahan terbaik</li>
+                    </ul>
+                    <p>Manual threshold (misal: 128) tidak fleksibel - bisa bagus untuk satu gambar tapi buruk untuk gambar lain.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">6. Jelaskan perbedaan CNN dengan Neural Network biasa!</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <table style="margin: 10px 0;">
+                        <tr>
+                            <th>Aspek</th>
+                            <th>NN Biasa (Fully Connected)</th>
+                            <th>CNN</th>
+                        </tr>
+                        <tr>
+                            <td>Struktur Input</td>
+                            <td>Flatten 1D (224×224×3 = 150K param per neuron)</td>
+                            <td>Preserve 2D (kernel 3×3 = 27 param)</td>
+                        </tr>
+                        <tr>
+                            <td>Parameter</td>
+                            <td>Sangat banyak (prone overfitting)</td>
+                            <td>Jauh lebih sedikit (parameter sharing)</td>
+                        </tr>
+                        <tr>
+                            <td>Spatial Info</td>
+                            <td>Hilang saat flatten</td>
+                            <td>Dipertahankan (pixel tetangga penting)</td>
+                        </tr>
+                        <tr>
+                            <td>Translation Invariance</td>
+                            <td>Tidak ada</td>
+                            <td>Ada (konvolusi di seluruh gambar)</td>
+                        </tr>
+                    </table>
+                    <p><strong>Kesimpulan:</strong> CNN dirancang khusus untuk data grid (gambar) dan jauh lebih efisien.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">7. Mengapa menggunakan Transfer Learning daripada training from scratch?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p><strong>Transfer Learning</strong> memanfaatkan MobileNetV2 yang sudah dilatih pada ImageNet (1.4 juta gambar, 1000 kelas).</p>
+                    <p><strong>Keuntungan konkret:</strong></p>
+                    <ul>
+                        <li><strong>Waktu:</strong> Training hanya 2 jam vs 2-3 hari from scratch</li>
+                        <li><strong>Data:</strong> Cukup 13K gambar vs butuh 100K+ from scratch</li>
+                        <li><strong>Akurasi:</strong> 91.79% vs ~70-75% from scratch dengan data sama</li>
+                        <li><strong>Generalisasi:</strong> Pre-trained model sudah belajar fitur visual universal (edges, textures)</li>
+                    </ul>
+                    <p>Kita tinggal fine-tune layer atas untuk task spesifik (garbage classification).</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">8. Jelaskan cara kerja Dropout(0.5) dalam mencegah overfitting!</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p>Dropout dengan rate 0.5 berarti setiap neuron punya probabilitas 50% "dimatikan" (set to 0) saat training.</p>
+                    <p><strong>Mekanisme mencegah overfitting:</strong></p>
+                    <ul>
+                        <li><strong>Forced Redundancy:</strong> Network tidak boleh terlalu bergantung pada neuron tertentu</li>
+                        <li><strong>Ensemble Effect:</strong> Setiap batch melatih sub-network berbeda → seperti ensemble model</li>
+                        <li><strong>Feature Co-adaptation:</strong> Neuron dipaksa belajar fitur yang robust, tidak hanya menghafal</li>
+                    </ul>
+                    <p><strong>Saat inference:</strong> Semua neuron aktif, tapi output di-scale dengan 0.5 untuk kompensasi.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">9. Mengapa validation accuracy (91.79%) tidak jauh berbeda dari training accuracy (92.03%)?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p>Gap kecil (hanya 0.24%) menunjukkan model <strong>tidak overfitting</strong> dan memiliki <strong>generalisasi baik</strong>.</p>
+                    <p><strong>Alasan gap kecil:</strong></p>
+                    <ul>
+                        <li><strong>Transfer Learning:</strong> Pre-trained weight sudah general</li>
+                        <li><strong>Dropout & Augmentation:</strong> Regularisasi mencegah overfitting</li>
+                        <li><strong>Data Cukup:</strong> 11K training samples cukup untuk 2.5M parameter yang di-train</li>
+                        <li><strong>Early Stopping:</strong> Training berhenti sebelum overfitting terjadi</li>
+                    </ul>
+                    <p>Jika gap >5%, itu indikasi overfitting. Gap kami sangat sehat untuk production deployment.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">10. Kelas mana yang paling sulit dibedakan dan mengapa?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p>Dari confusion matrix dan F1-scores, kelas paling sulit adalah:</p>
+                    <ul>
+                        <li><strong>Glass vs Metal (15 kesalahan):</strong> Kedua material punya karakteristik reflektif tinggi dan shiny appearance yang mirip.</li>
+                        <li><strong>Trash (Recall 0.86, terendah):</strong> Kategori "trash" sangat heterogen (organik, campuran) sehingga tidak punya pola visual konsisten.</li>
+                    </ul>
+                    <p><strong>Solusi:</strong> Tambahkan sub-kategori untuk trash (organik, non-organik) atau gunakan ensemble model.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">11. Jelaskan proses backpropagation dalam training CNN!</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p><strong>Forward Pass:</strong> Input → Conv layers → Pooling → Dense → Output (predictions)</p>
+                    <p><strong>Loss Calculation:</strong> Categorical Crossentropy = -Σ(y_true × log(y_pred))</p>
+                    <p><strong>Backward Pass (Backpropagation):</strong></p>
+                    <ol>
+                        <li>Hitung gradient loss terhadap output layer: ∂L/∂output</li>
+                        <li>Propagate mundur menggunakan chain rule: ∂L/∂weight = ∂L/∂output × ∂output/∂weight</li>
+                        <li>Update weights menggunakan Adam: weight_new = weight_old - learning_rate × gradient</li>
+                    </ol>
+                    <p>Proses ini diulang untuk setiap batch (32 gambar) hingga model converge.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">12. Apa fungsi GlobalAveragePooling2D dibanding Flatten?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <table style="margin: 10px 0;">
+                        <tr>
+                            <th>Aspek</th>
+                            <th>Flatten</th>
+                            <th>GlobalAveragePooling2D</th>
+                        </tr>
+                        <tr>
+                            <td>Output Shape</td>
+                            <td>(7×7×1280) = 62,720 values</td>
+                            <td>(1280,) = 1,280 values</td>
+                        </tr>
+                        <tr>
+                            <td>Parameter Dense</td>
+                            <td>62,720 × 256 = 16M param</td>
+                            <td>1,280 × 256 = 327K param</td>
+                        </tr>
+                        <tr>
+                            <td>Overfitting Risk</td>
+                            <td>Tinggi (banyak param)</td>
+                            <td>Rendah (regularisasi built-in)</td>
+                        </tr>
+                        <tr>
+                            <td>Translation Invariance</td>
+                            <td>Tidak ada</td>
+                            <td>Ada (average semua posisi)</td>
+                        </tr>
+                    </table>
+                    <p><strong>Kesimpulan:</strong> GAP mengurangi parameter drastis dan lebih robust terhadap posisi objek.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">13. Bagaimana cara meningkatkan akurasi model lebih tinggi lagi?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p>Strategi untuk mencapai 95%+ akurasi:</p>
+                    <ol>
+                        <li><strong>Fine-tuning:</strong> Unfreeze 20 layer terakhir MobileNetV2, train ulang dengan LR=0.0001</li>
+                        <li><strong>Ensemble Model:</strong> Combine MobileNetV2 + EfficientNetB0 + ResNet50 (voting)</li>
+                        <li><strong>Advanced Augmentation:</strong> Mixup, CutMix, AutoAugment</li>
+                        <li><strong>Focal Loss:</strong> Fokus pada hard examples (kelas yang sering salah)</li>
+                        <li><strong>Test-Time Augmentation:</strong> Prediksi pada 5 augmented versions, ambil rata-rata</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">14. Apa limitasi dari model ini untuk aplikasi real-world?</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <p><strong>Limitasi teknis:</strong></p>
+                    <ul>
+                        <li><strong>Single Object:</strong> Model hanya handle 1 sampah per gambar, tidak bisa multiple objects</li>
+                        <li><strong>Controlled Environment:</strong> Training data foto close-up, bisa gagal pada foto jarak jauh</li>
+                        <li><strong>6 Kelas Saja:</strong> Tidak handle sampah kategori lain (e-waste, hazardous)</li>
+                        <li><strong>Lighting Dependency:</strong> Performa turun pada kondisi gelap/sangat terang</li>
+                    </ul>
+                    <p><strong>Solusi:</strong> Gunakan object detection (YOLO) untuk multiple objects, tambahkan kelas baru, augmentasi brightness.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">15. Jelaskan trade-off MobileNetV2 vs ResNet atau EfficientNet!</div>
+                <div class="answer">
+                    <p><strong>Jawaban:</strong></p>
+                    <table style="margin: 10px 0;">
+                        <tr>
+                            <th>Model</th>
+                            <th>Parameters</th>
+                            <th>Accuracy (ImageNet)</th>
+                            <th>Inference Speed</th>
+                            <th>Use Case</th>
+                        </tr>
+                        <tr>
+                            <td><strong>MobileNetV2</strong></td>
+                            <td>3.5M</td>
+                            <td>~72%</td>
+                            <td>Sangat cepat</td>
+                            <td>Mobile/embedded</td>
+                        </tr>
+                        <tr>
+                            <td>ResNet50</td>
+                            <td>25M</td>
+                            <td>~76%</td>
+                            <td>Sedang</td>
+                            <td>Server/cloud</td>
+                        </tr>
+                        <tr>
+                            <td>EfficientNetB0</td>
+                            <td>5M</td>
+                            <td>~77%</td>
+                            <td>Cepat</td>
+                            <td>Balance</td>
+                        </tr>
+                    </table>
+                    <p><strong>Pilihan MobileNetV2:</strong> Cocok untuk deployment ke perangkat edge (Raspberry Pi, smartphone) dimana resource terbatas. Trade-off: Akurasi sedikit lebih rendah (~3-4%) tapi inference 3x lebih cepat.</p>
+                </div>
+            </div>
+
+            <div class="highlight success" style="margin-top: 30px;">
+                <h3>💡 Tips Tambahan Saat Presentasi:</h3>
+                <ul>
+                    <li>✅ Siapkan slide visual (confusion matrix, sample predictions)</li>
+                    <li>✅ Demo live prediction jika memungkinkan</li>
+                    <li>✅ Tekankan aspek pengolahan citra (bukan hanya ML)</li>
+                    <li>✅ Jelaskan dengan analogi sederhana (misal: CNN seperti filter Instagram bertingkat)</li>
+                    <li>✅ Siap jelaskan setiap angka dalam classification report</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- SKRIP VIDEO YOUTUBE -->
+        <div class="section" id="video">
+            <h2>🎬 Skrip Video Youtube (7-10 Menit)</h2>
+            <p><strong>Berdasarkan perintah soal poin (e):</strong> "Mahasiswa membuat video penjelasan berdurasi 7–10 menit dan mengunggah ke Youtube."</p>
+            <p>Berikut adalah skrip lengkap yang bisa Anda baca saat merekam video presentasi UAS. Setiap bagian sudah dilengkapi dengan estimasi waktu.</p>
+
+            <div class="highlight info">
+                <p><strong>⏱️ Estimasi Total: ~9 menit 30 detik (masih dalam batas 7-10 menit)</strong></p>
+            </div>
+
+            <div class="qa-box" style="border-left: 5px solid #e74c3c;">
+                <div class="question">🎬 PEMBUKAAN (0:00 - 0:45)</div>
+                <div class="answer">
+                    <p><em>"Assalamu'alaikum warahmatullahi wabarakatuh. Perkenalkan, saya [Nama] dari Program Studi Ilmu Komputer. Pada video ini, saya akan menjelaskan project UAS Pengolahan Citra Digital yang berjudul <strong>Garbage Classification menggunakan CNN dengan Transfer Learning MobileNetV2</strong>.</em></p>
+                    <p><em>Project ini bertujuan untuk mengklasifikasikan sampah ke dalam 6 kategori, yaitu: cardboard atau kardus, glass atau kaca, metal atau logam, paper atau kertas, plastic atau plastik, dan trash atau sampah organik. Dataset yang digunakan adalah Garbage Classification Dataset dari Kaggle yang terdiri dari 13.901 gambar."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tampilkan judul project, logo universitas, dan sampel 6 kelas sampah.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">📁 CELL 1 (Markdown) — Judul Project (0:45 - 1:00)</div>
+                <div class="answer">
+                    <p><em>"Ini adalah cell pertama notebook, berupa markdown yang berisi judul project, mata kuliah, dataset yang digunakan, algoritma yang dipakai yaitu CNN dengan Transfer Learning MobileNetV2, serta 6 kelas sampah yang akan diklasifikasikan."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tunjuk ke notebook, sorot cell markdown pertama.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">📦 CELL 2 (Markdown) + CELL 3 (Kode) — Install & Import Library (1:00 - 1:30)</div>
+                <div class="answer">
+                    <p><em>"Selanjutnya, kita mengimport library-library yang diperlukan. Library utamanya adalah <strong>TensorFlow</strong> dan <strong>Keras</strong> untuk membangun model CNN, <strong>OpenCV atau cv2</strong> untuk membaca dan memproses citra, <strong>Matplotlib</strong> untuk visualisasi, <strong>Scikit-learn</strong> untuk classification report dan confusion matrix, serta <strong>Seaborn</strong> untuk membuat heatmap yang lebih menarik.</em></p>
+                    <p><em>Pada output, terlihat bahwa TensorFlow versi 2.21.0 berhasil diimport, menandakan semua library siap digunakan."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tampilkan kode import dan output "Semua library berhasil diimport!".</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">📁 CELL 4 (Markdown) + CELL 5 (Kode) — Soal 1: Informasi Dataset (1:30 - 2:30)</div>
+                <div class="answer">
+                    <p><em>"Kita masuk ke <strong>Soal nomor 1 tentang Dataset dan Akuisisi Citra</strong>. Pertama, kita mendefinisikan path dataset dan daftar kelas yang terdiri dari cardboard, glass, metal, paper, plastic, dan trash.</em></p>
+                    <p><em>Kemudian kita menghitung jumlah gambar per kelas dengan looping menggunakan os.listdir. Hasilnya menunjukkan distribusi yang cukup seimbang: cardboard 2.214 gambar, glass 2.500, metal 2.084, paper 2.315, plastic 2.288, dan trash 2.500, dengan total 13.901 gambar. Dataset ini seimbang, yang bagus untuk training model karena tidak ada bias terhadap kelas tertentu."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tampilkan output statistik dataset. Jelaskan baris kode os.path.join, os.listdir, dan looping.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">📸 CELL 6 (Kode) — Soal 1: Contoh Citra (2:30 - 3:00)</div>
+                <div class="answer">
+                    <p><em>"Untuk memenuhi sub-soal 1.4, kita menampilkan contoh citra dari setiap kelas. Kode ini membuat grid 2 baris 3 kolom menggunakan matplotlib, lalu untuk setiap kelas kita membaca gambar pertama di folder menggunakan OpenCV, mengkonversinya dari BGR ke RGB karena OpenCV membaca dalam format BGR sedangkan matplotlib membutuhkan RGB, dan menampilkannya.</em></p>
+                    <p><em>Outputnya adalah 6 gambar sampel yang mewakili setiap jenis sampah, lengkap dengan ukuran pixel-nya."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tampilkan output 6 gambar sampel. Jelaskan pentingnya konversi BGR → RGB.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">🖼️ CELL 7 (Markdown) + CELL 8-9 (Kode) — Soal 2: Representasi Citra Digital (3:00 - 4:00)</div>
+                <div class="answer">
+                    <p><em>"Selanjutnya <strong>Soal nomor 2 tentang Representasi Citra Digital</strong>. Kita mengambil satu contoh gambar plastic, lalu membaca informasinya. Tipe data citra adalah uint8, artinya unsigned integer 8-bit dengan nilai 0 sampai 255. Shape-nya adalah 256x256 pixel dengan 3 channel warna yang dalam OpenCV terbaca sebagai BGR, bukan RGB.</em></p>
+                    <p><em>Kita juga menampilkan contoh nilai pixel 5x5 dari pojok kiri atas channel Red. Nilai 201 menunjukkan intensitas merah yang cukup tinggi. Ini membuktikan bahwa citra digital tidak lebih dari sebuah array angka-angka.</em></p>
+                    <p><em>Pada cell berikutnya, kita memvisualisasikan channel Red, Green, dan Blue secara terpisah menggunakan colormap masing-masing. Channel Red lebih terang di area yang dominan merah, channel Green lebih terang di area hijau, dan seterusnya."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tunjukkan output shape (256,256,3), nilai pixel 5x5, dan 4 subplot channel RGB.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">⚙️ CELL 10 (Markdown) + CELL 11-12 (Kode) — Soal 3: 7 Tahap Preprocessing (4:00 - 5:30)</div>
+                <div class="answer">
+                    <p><em>"Sekarang <strong>Soal nomor 3 tentang Teknik Pengolahan Citra</strong>. Kita mendemonstrasikan 7 tahap preprocessing, lebih dari minimal 3 yang diminta soal.</em></p>
+                    <p><em><strong>Tahap 1: Resize.</strong> Gambar diubah ukurannya dari 256x256 menjadi 224x224 pixel menggunakan cv2.resize. Ukuran 224x224 adalah ukuran standar input untuk MobileNetV2.</em></p>
+                    <p><em><strong>Tahap 2: Grayscale.</strong> Citra RGB 3 channel diubah menjadi 1 channel abu-abu menggunakan cv2.cvtColor dengan parameter RGB2GRAY. Ini membantu reduksi dimensi dan analisis tekstur.</em></p>
+                    <p><em><strong>Tahap 3: Normalisasi.</strong> Nilai pixel dibagi 255 sehingga berada di rentang 0.0 hingga 1.0. Ini penting untuk stabilitas training neural network.</em></p>
+                    <p><em><strong>Tahap 4: Gaussian Blur.</strong> Kernel Gaussian 5x5 diterapkan untuk menghaluskan citra dan mengurangi noise.</em></p>
+                    <p><em><strong>Tahap 5: Segmentasi Otsu.</strong> Metode thresholding otomatis yang memisahkan objek dari latar belakang dengan mencari threshold optimal.</em></p>
+                    <p><em><strong>Tahap 6: Canny Edge Detection.</strong> Mendeteksi tepi objek menggunakan dua threshold, 50 dan 150.</em></p>
+                    <p><em><strong>Tahap 7: Ekstraksi Fitur Histogram.</strong> Histogram warna RGB 256 bins diekstrak untuk merepresentasikan distribusi warna."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tunjukkan satu per satu output preprocessing dan visualisasi 8 subplot.</p>
+                    <div class="highlight warning">
+                        <strong>📌 Catatan Penting untuk Video:</strong> Jelaskan bahwa 7 tahap ini didemonstrasikan untuk edukasi. Model CNN sebenarnya dilatih dengan data augmentation (rotation, shift, shear, zoom, flip) + rescale 1./255, bukan grayscale/blur/otsu/canny, karena MobileNetV2 butuh input RGB 3-channel.
+                    </div>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">🤖 CELL 13 (Markdown) + CELL 14-17 (Kode) — Soal 4: CNN MobileNetV2 (5:30 - 7:15)</div>
+                <div class="answer">
+                    <p><em>"<strong>Soal nomor 4 tentang Aplikasi Pengolahan Citra.</strong> Algoritma yang digunakan adalah Convolutional Neural Network dengan Transfer Learning menggunakan arsitektur MobileNetV2.</em></p>
+                    <p><em><strong>Cell 14:</strong> Kita menyiapkan data menggunakan ImageDataGenerator. Untuk training, kita berikan augmentasi berupa rotasi ±20 derajat, pergeseran horizontal dan vertikal 20%, shear transform, zoom, dan horizontal flip. Data otomatis terbagi 80% training dan 20% validasi. Terlihat ada 11.123 gambar untuk training dan 2.778 untuk validasi.</em></p>
+                    <p><em><strong>Cell 15:</strong> Kita membangun model dengan memuat MobileNetV2 yang sudah dilatih pada dataset ImageNet. Base model di-freeze agar bobotnya tidak berubah. Kemudian kita tambahkan custom classification head: GlobalAveragePooling2D untuk meringkas fitur, Dense layer 256 neuron dengan ReLU, Dropout 50% untuk mencegah overfitting, dan output layer 6 neuron dengan softmax. Total parameter model adalah 2.587.462.</em></p>
+                    <p><em><strong>Cell 16:</strong> Model dilatih selama 20 epoch dengan callback EarlyStopping dan ReduceLROnPlateau. Learning rate turun dari 0.001 menjadi 0.0005 di epoch 16. Akurasi training meningkat dari 71% di epoch 1 menjadi 92% di epoch 20, sementara validasi mencapai 91.79%.</em></p>
+                    <p><em><strong>Cell 17:</strong> Kurva training menunjukkan akurasi meningkat stabil dan loss menurun, tanpa indikasi overfitting karena gap train dan validation sangat kecil."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tunjukkan output flow_from_directory, arsitektur model, log training per epoch, dan kurva accuracy/loss.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">📊 CELL 18 (Markdown) + CELL 19-23 (Kode) — Soal 5: Analisis Hasil (7:15 - 8:45)</div>
+                <div class="answer">
+                    <p><em>"<strong>Soal nomor 5 tentang Analisis Hasil.</strong> Pertama kita evaluasi model pada data validasi. Hasilnya: validation loss 0,2597 dan validation accuracy 91,79%.</em></p>
+                    <p><em>Classification report menunjukkan precision, recall, dan F1-score per kelas. Rata-rata weighted F1-score adalah 0,92 yang berarti sangat baik. Kelas cardboard punya F1 tertinggi 0,94, sementara trash terendah 0,90 karena kategori ini memang paling heterogen.</em></p>
+                    <p><em>Confusion matrix divisualisasikan dengan heatmap. Dari 2.778 gambar validasi, model hanya salah mengklasifikasi sekitar 220 gambar. Misalnya, ada 15 gambar metal yang salah diprediksi sebagai glass karena keduanya punya karakteristik reflektif yang mirip.</em></p>
+                    <p><em>Kita juga menguji prediksi pada gambar baru. Fungsi predict_image membaca gambar, melakukan preprocessing yang sama, lalu menampilkan bar chart confidence. Pada contoh gambar glass, model memprediksi dengan keyakinan 99,99% bahwa gambar tersebut adalah glass — dan itu benar.</em></p>
+                    <p><em>Kesimpulannya: model berhasil melakukan pengolahan citra dengan baik, dibuktikan dengan akurasi 91,79% yang jauh di atas threshold 85%."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tampilkan evaluation output, classification report, confusion matrix heatmap, dan hasil uji prediksi.</p>
+                </div>
+            </div>
+
+            <div class="qa-box">
+                <div class="question">💾 CELL 24-25 (Kode) — Simpan Model (8:45 - 9:00)</div>
+                <div class="answer">
+                    <p><em>"Terakhir, model disimpan dalam dua format: HDF5 (.h5) dan native Keras (.keras) untuk keperluan deployment nantinya."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tampilkan output penyimpanan model.</p>
+                </div>
+            </div>
+
+            <div class="qa-box" style="border-left: 5px solid #27ae60;">
+                <div class="question">🎬 PENUTUP (9:00 - 9:30)</div>
+                <div class="answer">
+                    <p><em>"Demikian penjelasan mengenai project Garbage Classification menggunakan CNN dengan Transfer Learning MobileNetV2. Untuk menjawab soal UAS secara ringkas:</em></p>
+                    <p><em><strong>Soal 1:</strong> Dataset Garbage Classification dari Kaggle, 13.901 gambar, 6 kelas, tujuan klasifikasi sampah otomatis.</em></p>
+                    <p><em><strong>Soal 2:</strong> Citra dibaca dengan OpenCV dalam format BGR, dikonversi ke RGB, shape (256,256,3), tipe uint8, nilai pixel 0-255.</em></p>
+                    <p><em><strong>Soal 3:</strong> Diterapkan 7 tahap preprocessing: Resize, Grayscale, Normalisasi, Gaussian Blur, Segmentasi Otsu, Canny Edge Detection, Ekstraksi Histogram.</em></p>
+                    <p><em><strong>Soal 4:</strong> Algoritma CNN MobileNetV2 dengan Transfer Learning mengekstrak fitur visual secara hierarkis.</em></p>
+                    <p><em><strong>Soal 5:</strong> Model berhasil dengan akurasi validasi 91,79% dan F1-score rata-rata 0,92.</em></p>
+                    <p><em>Sekian dari saya, terima kasih atas perhatiannya. Wassalamu'alaikum warahmatullahi wabarakatuh."</em></p>
+                    <p><strong>🎥 Visual:</strong> Tampilkan slide kesimpulan — link dataset, link notebook, dan ucapan terima kasih.</p>
+                </div>
+            </div>
+
+            <div class="highlight success">
+                <h3>⏱️ Rincian Waktu Video</h3>
+                <table>
+                    <tr><th>Segmen</th><th>Durasi</th><th>Waktu Kumulatif</th></tr>
+                    <tr><td>Pembukaan</td><td>0:45</td><td>0:45</td></tr>
+                    <tr><td>Cell 1 — Judul</td><td>0:15</td><td>1:00</td></tr>
+                    <tr><td>Cell 2-3 — Import Library</td><td>0:30</td><td>1:30</td></tr>
+                    <tr><td>Cell 4-5 — Info Dataset (Soal 1)</td><td>1:00</td><td>2:30</td></tr>
+                    <tr><td>Cell 6 — Contoh Citra (Soal 1)</td><td>0:30</td><td>3:00</td></tr>
+                    <tr><td>Cell 7-9 — Representasi Citra (Soal 2)</td><td>1:00</td><td>4:00</td></tr>
+                    <tr><td>Cell 10-12 — 7 Preprocessing (Soal 3)</td><td>1:30</td><td>5:30</td></tr>
+                    <tr><td>Cell 13-17 — CNN MobileNetV2 (Soal 4)</td><td>1:45</td><td>7:15</td></tr>
+                    <tr><td>Cell 18-23 — Analisis Hasil (Soal 5)</td><td>1:30</td><td>8:45</td></tr>
+                    <tr><td>Cell 24-25 — Simpan Model</td><td>0:15</td><td>9:00</td></tr>
+                    <tr><td>Penutup</td><td>0:30</td><td>9:30</td></tr>
+                    <tr style="background: #667eea; color: white; font-weight: bold;"><td>TOTAL</td><td>9:30</td><td>9:30</td></tr>
+                </table>
+            </div>
+
+            <div class="highlight info">
+                <h3>📌 Tips Rekam Video</h3>
+                <ul>
+                    <li><strong>Rekam layar + webcam:</strong> Gunakan OBS Studio agar audiens bisa melihat wajah Anda dan notebook secara bersamaan</li>
+                    <li><strong>Zoom in pada kode:</strong> Perbesar bagian kode yang sedang dijelaskan agar terbaca jelas</li>
+                    <li><strong>Baca skrip natural:</strong> Jangan kaku, gunakan intonasi seperti sedang mengajar teman</li>
+                    <li><strong>Tunjukkan output:</strong> Setelah menjelaskan kode, tunjukkan output-nya dan beri komentar singkat</li>
+                    <li><strong>Gunakan cursor/highlight:</strong> Bantu penonton fokus pada baris kode yang sedang dijelaskan</li>
+                    <li><strong>Background rapi:</strong> Pastikan background tidak berantakan dan pencahayaan cukup</li>
+                    <li><strong>Suara jelas:</strong> Gunakan microphone eksternal jika ada, atau headset dengan noise cancellation</li>
+                    <li><strong>Backup script:</strong> Cetak skrip di samping layar atau gunakan teleprompter</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="info-box" style="margin-top: 40px; text-align: center;">
+            <h2>🎓 Selamat Belajar dan Sukses untuk UAS!</h2>
+            <p style="font-size: 1.1em; margin-top: 15px;">
+                Panduan ini dibuat untuk membantu Anda memahami setiap aspek dari project Garbage Classification.<br>
+                Pelajari dengan teliti, praktikkan penjelasannya, dan percaya diri saat presentasi!
+            </p>
+            <p style="margin-top: 20px; font-style: italic;">
+                "Pengolahan Citra + Deep Learning = Solusi Cerdas untuk Masalah Nyata" 🚀
+            </p>
+        </div>
+
+    </div>
+
+    <script>
+        // === SIDEBAR TOGGLE (Mobile) ===
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('sidebarToggle');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        function openSidebar() {
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+        }
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        }
+        toggleBtn.addEventListener('click', openSidebar);
+        overlay.addEventListener('click', closeSidebar);
+
+        // === ACTIVE LINK HIGHLIGHT ON SCROLL ===
+        const sections = document.querySelectorAll('.section[id]');
+        const navLinks = document.querySelectorAll('.sidebar nav ul li a');
+
+        function updateActiveLink() {
+            let current = '';
+            sections.forEach(section => {
+                const top = section.offsetTop - 100;
+                const bottom = top + section.offsetHeight;
+                if (window.scrollY >= top && window.scrollY < bottom) {
+                    current = section.getAttribute('id');
+                }
+            });
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        }
+        window.addEventListener('scroll', updateActiveLink);
+        window.addEventListener('load', updateActiveLink);
+
+        // === SCROLL PROGRESS BAR ===
+        const progressBar = document.getElementById('progressBar');
+        function updateProgress() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+            progressBar.style.width = progress + '%';
+        }
+        window.addEventListener('scroll', updateProgress);
+        window.addEventListener('load', updateProgress);
+    </script>
+
+</body>
+</html>

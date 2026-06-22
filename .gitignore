@@ -1,0 +1,32 @@
+# Dataset (download sendiri dari Kaggle)
+Trash_Dataset/
+Trash_Dataset.zip
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.ipynb_checkpoints/
+
+# VSCode settings (optional)
+.vscode/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Model files (large)
+*.h5
+*.keras
+!content/*.h5
+!content/*.keras
