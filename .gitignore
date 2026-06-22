@@ -21,6 +21,9 @@ __pycache__/
 # Notebook checkpoints
 .ipynb_checkpoints/
 
+# Upload folder (Flask temp files)
+uploads/
+
 # OS files
 .DS_Store
 Thumbs.db

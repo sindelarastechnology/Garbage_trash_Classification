@@ -1,0 +1,23 @@
+C:\laragon\bin\python\python-3.10\lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.2.1) or chardet (7.4.3)/charset_normalizer (3.3.2) doesn't match a supported version!
+  warnings.warn(
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+ * Serving Flask app 'app'
+ * Debug mode: off
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5050
+ * Running on http://192.168.110.196:5050
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:21:28] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:21:37] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:21:42] "POST / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:21:56] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:22:11] "POST / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:22:45] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:22:50] "POST / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:24:30] "POST / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:24:39] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:31:25] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:31:28] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+INFO:werkzeug:127.0.0.1 - - [22/Jun/2026 22:32:22] "POST / HTTP/1.1" 200 -

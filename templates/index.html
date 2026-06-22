@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoSort — Garbage Classification AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e0c;
+            --bg-secondary: #0f1a13;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-card-hover: rgba(255, 255, 255, 0.06);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --border-hover: rgba(74, 222, 128, 0.2);
+            --accent: #4ade80;
+            --accent-dim: #22c55e;
+            --accent-glow: rgba(74, 222, 128, 0.15);
+            --text-primary: #f0fdf4;
+            --text-secondary: #86efac;
+            --text-muted: #6b7280;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-dim);
+            border-radius: 3px;
+        }
+
+        /* === Nav === */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(10, 14, 12, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+        nav.scrolled {
+            padding: 10px 32px;
+            background: rgba(10, 14, 12, 0.95);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.15em;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+        .nav-logo .icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+        }
+        .nav-logo span {
+            color: var(--accent);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85em;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .nav-links a:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+        .nav-links .btn-predict {
+            background: var(--accent);
+            color: #0a0e0c;
+            font-weight: 700;
+        }
+        .nav-links .btn-predict:hover {
+            background: var(--accent-dim);
+            color: #0a0e0c;
+        }
+
+        .nav-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5em;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 12px 16px;
+            }
+            .nav-links {
+                display: none;
+                position: fixed;
+                top: 64px;
+                left: 0;
+                right: 0;
+                background: rgba(10, 14, 12, 0.98);
+                backdrop-filter: blur(20px);
+                flex-direction: column;
+                padding: 16px;
+                gap: 4px;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .nav-links.open {
+                display: flex;
+            }
+            .nav-links a {
+                width: 100%;
+                padding: 12px 16px;
+            }
+            .nav-toggle {
+                display: block;
+            }
+        }
+
+        /* === Hero === */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 24px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .hero-bg .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+        }
+        .hero-bg .orb:nth-child(1) {
+            width: 600px;
+            height: 600px;
+            background: var(--accent-glow);
+            top: -20%;
+            left: -10%;
+            animation: orbFloat 20s ease-in-out infinite;
+        }
+        .hero-bg .orb:nth-child(2) {
+            width: 400px;
+            height: 400px;
+            background: rgba(34, 197, 94, 0.15);
+            bottom: -10%;
+            right: -5%;
+            animation: orbFloat 25s ease-in-out infinite reverse;
+        }
+
+        @keyframes orbFloat {
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+            33% {
+                transform: translate(30px, -30px) scale(1.05);
+            }
+            66% {
+                transform: translate(-20px, 20px) scale(0.95);
+            }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 100px;
+            background: var(--accent-glow);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            font-size: 0.8em;
+            color: var(--accent);
+            font-weight: 500;
+            margin-bottom: 24px;
+        }
+        .hero-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 7vw, 5rem);
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 20px;
+        }
+        .hero h1 .accent {
+            background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero h1 .outline {
+            -webkit-text-stroke: 1px var(--text-primary);
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 2vw, 1.15rem);
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 32px;
+            line-height: 1.7;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 0.95em;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #0a0e0c;
+        }
+        .btn-primary:hover {
+            background: var(--accent-dim);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(74, 222, 128, 0.3);
+        }
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
+
+        .particles {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .particle {
+            position: absolute;
+            font-size: 1.5em;
+            opacity: 0.15;
+            animation: particleFloat 20s linear infinite;
+        }
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.15;
+            }
+            90% {
+                opacity: 0.15;
+            }
+            100% {
+                transform: translateY(-10vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* === Stats Bar === */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1px;
+            background: var(--border-color);
+            border-radius: var(--radius);
+            overflow: hidden;
+            max-width: 900px;
+            margin: -40px auto 60px;
+            position: relative;
+            z-index: 2;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .stats-bar.visible {
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .stat-item {
+            background: var(--bg-secondary);
+            padding: 24px 20px;
+            text-align: center;
+        }
+        .stat-item .num {
+            font-size: 1.8em;
+            font-weight: 800;
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .stat-item .label {
+            font-size: 0.8em;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* === Tabs === */
+        .tabs-wrapper {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px 80px;
+        }
+
+        .tab-nav {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            border-radius: var(--radius);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            margin-bottom: 40px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-nav::-webkit-scrollbar {
+            height: 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+        .tab-btn.active {
+            background: var(--accent);
+            color: #0a0e0c;
+            box-shadow: 0 4px 20px rgba(74, 222, 128, 0.25);
+        }
+
+        .tab-panel {
+            display: none;
+            animation: tabFadeIn 0.4s ease;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+
+        @keyframes tabFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* === Classifier (Tab) === */
+        .classifier-grid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+            margin-top: 0;
+            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .classifier-grid .upload-card,
+        .classifier-grid .result-card {
+            width: 100%;
+            max-width: 560px;
+            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .classifier-grid.has-result {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            align-items: start;
+        }
+
+        .classifier-grid.has-result .upload-card,
+        .classifier-grid.has-result .result-card {
+            max-width: none;
+        }
+
+        @media (max-width: 800px) {
+            .classifier-grid.has-result {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .upload-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            padding: 32px;
+            transition: var(--transition);
+        }
+
+        .upload-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sm);
+            padding: 48px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--bg-card);
+            position: relative;
+            overflow: hidden;
+        }
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+        .upload-zone .icon {
+            font-size: 3em;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .upload-zone p {
+            color: var(--text-muted);
+            font-size: 0.95em;
+        }
+        .upload-zone p .browse {
+            color: var(--accent);
+            font-weight: 600;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .upload-zone .hint {
+            font-size: 0.8em;
+            color: rgba(255, 255, 255, 0.2);
+            margin-top: 8px;
+        }
+        #fileInput {
+            display: none;
+        }
+
+        .spinner {
+            display: none;
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(255, 255, 255, 0.06);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 20px auto;
+        }
+        .spinner.active {
+            display: block;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-msg {
+            display: none;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            font-size: 0.85em;
+            margin-bottom: 16px;
+        }
+        .error-msg.active {
+            display: block;
+        }
+
+        /* Result Card */
+        .result-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            padding: 32px;
+            display: none;
+            flex-direction: column;
+        }
+        .result-card.active {
+            display: flex;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .result-header .badge {
+            padding: 4px 12px;
+            border-radius: 100px;
+            background: var(--accent-glow);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            font-size: 0.7em;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .result-pred {
+            font-size: 2.2em;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .result-pred .pred-class {
+            color: var(--accent);
+        }
+        .result-pred .pred-class-id {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.6em;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .result-conf {
+            margin-top: 8px;
+            font-size: 3.5em;
+            font-weight: 900;
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1;
+        }
+        .result-conf-label {
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+
+        .result-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 20px 0;
+        }
+
+        .result-probs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .prob-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.82em;
+            background: var(--bg-card);
+            transition: var(--transition);
+        }
+        .prob-item.highlight {
+            background: var(--accent-glow);
+            border: 1px solid rgba(74, 222, 128, 0.15);
+        }
+        .prob-item .name {
+            color: var(--text-muted);
+        }
+        .prob-item .val {
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        .preview-wrap {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: var(--bg-card);
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-height: 280px;
+        }
+        .preview-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .chart-wrap {
+            margin-top: 20px;
+            height: 200px;
+        }
+
+        /* === Categories (Tab) === */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .cat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 24px 16px;
+            text-align: center;
+            transition: var(--transition);
+            cursor: default;
+        }
+        .cat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-4px);
+            background: var(--bg-card-hover);
+        }
+        .cat-card .emoji {
+            font-size: 2.4em;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .cat-card .name {
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+        .cat-card .name-id {
+            color: var(--text-muted);
+            font-size: 0.75em;
+            margin-top: 2px;
+        }
+
+        /* === How It Works (Tab) === */
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 700px) {
+            .steps-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .step-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 32px 24px;
+            text-align: center;
+            transition: var(--transition);
+            position: relative;
+        }
+        .step-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-4px);
+        }
+        .step-card .step-num {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent-glow);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9em;
+            color: var(--accent);
+            margin: 0 auto 16px;
+        }
+        .step-card .step-icon {
+            font-size: 2.2em;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .step-card h3 {
+            font-size: 1.1em;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .step-card p {
+            color: var(--text-muted);
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+
+        /* === Footer === */
+        footer {
+            border-top: 1px solid var(--border-color);
+            padding: 32px 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8em;
+        }
+        footer .footer-accent {
+            color: var(--accent);
+        }
+
+        /* === Empty state === */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state .icon {
+            font-size: 3em;
+            margin-bottom: 12px;
+            display: block;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Nav -->
+    <nav id="navbar">
+        <a href="#" class="nav-logo">
+            <div class="icon">&#9851;</div>
+            Eco<span>Sort</span>
+        </a>
+        <button class="nav-toggle" id="navToggle" aria-label="Menu">&#9776;</button>
+        <div class="nav-links" id="navLinks">
+            <a data-tab="classify">Klasifikasi</a>
+            <a data-tab="categories">Kategori</a>
+            <a data-tab="how">Cara Kerja</a>
+            <a data-tab="classify" class="btn-predict">Mulai Prediksi</a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="orb"></div>
+            <div class="orb"></div>
+        </div>
+        <div class="particles" id="particles"></div>
+
+        <div class="hero-content" id="heroContent">
+            <div class="hero-badge">
+                <span class="dot"></span>
+                AI-Powered Waste Classification
+            </div>
+            <h1>
+                Kenali &amp; Pisahkan<br>
+                <span class="accent">Sampah</span> dengan<br>
+                <span class="outline">Kecerdasan Buatan</span>
+            </h1>
+            <p>
+                Gunakan model CNN MobileNetV2 untuk mengklasifikasikan jenis sampah
+                secara otomatis. Cukup upload gambar, dapatkan hasil instan.
+            </p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" onclick="switchTab('classify')">
+                    &#128640; Mulai Klasifikasi
+                </a>
+                <a class="btn btn-secondary" onclick="switchTab('how')">
+                    &#128270; Cara Kerja
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-item">
+            <div class="num" data-count="6">0</div>
+            <div class="label">Kelas Sampah</div>
+        </div>
+        <div class="stat-item">
+            <div class="num" data-count="13901">0</div>
+            <div class="label">Total Dataset</div>
+        </div>
+        <div class="stat-item">
+            <div class="num" data-count="91.79">0</div>
+            <div class="label">Akurasi (%)</div>
+        </div>
+        <div class="stat-item">
+            <div class="num" data-count="4.2">0</div>
+            <div class="label">Parameter (Jt)</div>
+        </div>
+    </div>
+
+    <!-- Tabs Content -->
+    <div class="tabs-wrapper">
+
+        <!-- Tab Navigation -->
+        <div class="tab-nav" id="tabNav">
+            <button class="tab-btn active" data-tab="classify">&#128640; Klasifikasi</button>
+            <button class="tab-btn" data-tab="categories">&#128230; Kategori</button>
+            <button class="tab-btn" data-tab="how">&#9881; Cara Kerja</button>
+        </div>
+
+        <!-- Tab: Klasifikasi -->
+        <div class="tab-panel active" id="tab-classify">
+
+            <div style="text-align:center;margin-bottom:24px;">
+                <h2 class="section-title" style="font-size:clamp(1.4rem,3vw,2rem);font-weight:800;letter-spacing:-0.02em;">Uji Gambar Sampah</h2>
+                <p style="color:var(--text-muted);font-size:0.95em;max-width:500px;margin:8px auto 0;">
+                    Upload gambar sampah untuk mengetahui jenis dan tingkat keyakinan model.
+                </p>
+            </div>
+
+            <div class="classifier-grid" id="classifierGrid">
+                <div class="upload-card" id="uploadCard">
+                    <div style="font-weight:600;margin-bottom:16px;font-size:0.95em;">
+                        &#128193; Upload Gambar
+                    </div>
+
+                    <div class="error-msg" id="errorMsg"></div>
+
+                    <div class="upload-zone" id="uploadZone">
+                        <span class="icon">&#128206;</span>
+                        <p>Seret gambar ke sini atau <span class="browse" id="browseBtn">pilih file</span></p>
+                        <div class="hint">JPG, PNG, JPEG &mdash; Maks. 16 MB</div>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*">
+
+                    <div class="spinner" id="spinner"></div>
+
+                    <div class="preview-wrap" id="previewWrap" style="display:none;">
+                        <img id="previewImg" src="" alt="Preview">
+                    </div>
+                </div>
+
+                <div class="result-card" id="resultCard">
+                    <div class="result-header">
+                        <span class="badge">&#9733; Hasil</span>
+                    </div>
+                    <div class="result-pred">
+                        <span class="pred-class" id="predClass">-</span>
+                        <span class="pred-class-id" id="predClassId">-</span>
+                    </div>
+                    <div class="result-conf" id="predConf">-</div>
+                    <div class="result-conf-label">Tingkat Keyakinan Model</div>
+
+                    <div class="result-divider"></div>
+                    <div style="font-size:0.82em;color:var(--text-muted);margin-bottom:10px;">
+                        Probabilitas per Kelas:
+                    </div>
+                    <div class="result-probs" id="classList"></div>
+
+                    <div class="chart-wrap">
+                        <canvas id="chartCanvas"></canvas>
+                    </div>
+
+                    <div class="empty-state" id="emptyState">
+                        <span class="icon">&#128200;</span>
+                        <p>Upload gambar untuk melihat hasil prediksi</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Kategori -->
+        <div class="tab-panel" id="tab-categories">
+            <div style="text-align:center;margin-bottom:24px;">
+                <h2 class="section-title" style="font-size:clamp(1.4rem,3vw,2rem);font-weight:800;letter-spacing:-0.02em;">Jenis Sampah</h2>
+                <p style="color:var(--text-muted);font-size:0.95em;max-width:500px;margin:8px auto 0;">
+                    Model dapat mengenali 6 jenis sampah dengan akurasi tinggi.
+                </p>
+            </div>
+
+            <div class="categories-grid" id="categoriesGrid">
+                <div class="cat-card"><span class="emoji">&#128230;</span><div class="name">Cardboard</div><div class="name-id">Kardus</div></div>
+                <div class="cat-card"><span class="emoji">&#127872;</span><div class="name">Glass</div><div class="name-id">Kaca</div></div>
+                <div class="cat-card"><span class="emoji">&#129517;</span><div class="name">Metal</div><div class="name-id">Logam</div></div>
+                <div class="cat-card"><span class="emoji">&#128196;</span><div class="name">Paper</div><div class="name-id">Kertas</div></div>
+                <div class="cat-card"><span class="emoji">&#127794;</span><div class="name">Plastic</div><div class="name-id">Plastik</div></div>
+                <div class="cat-card"><span class="emoji">&#128686;</span><div class="name">Trash</div><div class="name-id">Sampah Organik</div></div>
+            </div>
+        </div>
+
+        <!-- Tab: Cara Kerja -->
+        <div class="tab-panel" id="tab-how">
+            <div style="text-align:center;margin-bottom:24px;">
+                <h2 class="section-title" style="font-size:clamp(1.4rem,3vw,2rem);font-weight:800;letter-spacing:-0.02em;">Cara Kerja</h2>
+                <p style="color:var(--text-muted);font-size:0.95em;max-width:500px;margin:8px auto 0;">
+                    Tiga langkah sederhana untuk mengklasifikasikan sampah.
+                </p>
+            </div>
+
+            <div class="steps-grid" id="stepsGrid">
+                <div class="step-card">
+                    <div class="step-num">1</div>
+                    <span class="step-icon">&#128247;</span>
+                    <h3>Upload Gambar</h3>
+                    <p>Pilih atau seret gambar sampah yang ingin diklasifikasikan.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">2</div>
+                    <span class="step-icon">&#9881;</span>
+                    <h3>Proses AI</h3>
+                    <p>Model MobileNetV2 memproses gambar melalui CNN untuk ekstraksi fitur.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">3</div>
+                    <span class="step-icon">&#128200;</span>
+                    <h3>Lihat Hasil</h3>
+                    <p>Dapatkan prediksi jenis sampah dan tingkat keyakinan secara instan.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>
+            Dibangun dengan &#128154; untuk UAS <span class="footer-accent">Pengolahan Citra Digital</span>
+            &bull; CNN MobileNetV2 &bull; 6 Kelas Sampah
+        </p>
+    </footer>
+
+    <script>
+        // === Tab System ===
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.tab === tabName);
+            });
+            document.querySelectorAll('.tab-panel').forEach(p => {
+                p.classList.toggle('active', p.id === 'tab-' + tabName);
+            });
+
+            // Animate tab content
+            const panel = document.getElementById('tab-' + tabName);
+            anime({
+                targets: panel,
+                opacity: [0, 1],
+                translateY: [12, 0],
+                duration: 400,
+                easing: 'easeOutExpo',
+            });
+
+            // Trigger category stagger if switching to categories
+            if (tabName === 'categories' && !window._catsAnimated) {
+                window._catsAnimated = true;
+                setTimeout(() => {
+                    anime({
+                        targets: '.cat-card',
+                        opacity: [0, 1],
+                        translateY: [20, 0],
+                        duration: 500,
+                        easing: 'easeOutExpo',
+                        delay: anime.stagger(80, { from: 'center' }),
+                    });
+                }, 150);
+            }
+
+            // Trigger steps stagger if switching to how
+            if (tabName === 'how' && !window._stepsAnimated) {
+                window._stepsAnimated = true;
+                setTimeout(() => {
+                    anime({
+                        targets: '.step-card',
+                        opacity: [0, 1],
+                        translateY: [30, 0],
+                        duration: 600,
+                        easing: 'easeOutExpo',
+                        delay: anime.stagger(120),
+                    });
+                }, 150);
+            }
+        }
+
+        // Tab click handlers
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        // Nav link tab switching
+        document.querySelectorAll('[data-tab]').forEach(el => {
+            el.addEventListener('click', () => {
+                switchTab(el.dataset.tab);
+                document.getElementById('navLinks').classList.remove('open');
+            });
+        });
+
+        // === Particles ===
+        (function initParticles() {
+            const container = document.getElementById('particles');
+            const icons = ['&#9851;', '&#9850;', '&#9855;', '&#9842;', '&#9773;', '&#9783;', '&#9790;', '&#9852;',
+                '&#9762;', '&#9776;'
+            ];
+            for (let i = 0; i < 18; i++) {
+                const el = document.createElement('div');
+                el.className = 'particle';
+                el.style.left = Math.random() * 100 + '%';
+                el.style.animationDuration = (18 + Math.random() * 22) + 's';
+                el.style.animationDelay = (Math.random() * 20) + 's';
+                el.style.fontSize = (1 + Math.random() * 2) + 'em';
+                el.innerHTML = icons[Math.floor(Math.random() * icons.length)];
+                container.appendChild(el);
+            }
+        })();
+
+        // === Nav scroll ===
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            navbar.classList.toggle('scrolled', window.scrollY > 50);
+        });
+
+        // === Nav toggle ===
+        document.getElementById('navToggle').addEventListener('click', () => {
+            document.getElementById('navLinks').classList.toggle('open');
+        });
+
+        // === Hero animation ===
+        anime({
+            targets: '#heroContent',
+            opacity: [0, 1],
+            translateY: [40, 0],
+            duration: 1000,
+            easing: 'easeOutExpo',
+            delay: 200,
+        });
+        anime({
+            targets: '.hero-badge',
+            opacity: [0, 1],
+            translateY: [20, 0],
+            duration: 800,
+            easing: 'easeOutExpo',
+            delay: 400,
+        });
+        anime({
+            targets: '.hero h1',
+            opacity: [0, 1],
+            translateY: [30, 0],
+            duration: 800,
+            easing: 'easeOutExpo',
+            delay: 600,
+        });
+        anime({
+            targets: '.hero p',
+            opacity: [0, 1],
+            translateY: [20, 0],
+            duration: 800,
+            easing: 'easeOutExpo',
+            delay: 800,
+        });
+        anime({
+            targets: '.hero-actions',
+            opacity: [0, 1],
+            translateY: [20, 0],
+            duration: 800,
+            easing: 'easeOutExpo',
+            delay: 1000,
+        });
+
+        // === Stats counter ===
+        const statsBar = document.getElementById('statsBar');
+        let statsCounted = false;
+
+        function animateStats() {
+            if (statsCounted) return;
+            statsCounted = true;
+            statsBar.classList.add('visible');
+            document.querySelectorAll('.stat-item .num').forEach(el => {
+                const target = parseFloat(el.dataset.count);
+                const decimals = target % 1 === 0 ? 0 : 2;
+                anime({
+                    targets: el,
+                    innerHTML: [0, target],
+                    duration: 1500,
+                    easing: 'easeOutExpo',
+                    delay: 200,
+                    round: decimals,
+                    update: function(a) {
+                        const val = a.animations[0].currentValue;
+                        el.textContent = decimals === 0 ? Math.round(val).toLocaleString() : val.toFixed(
+                            decimals);
+                    }
+                });
+            });
+        }
+
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) animateStats();
+            });
+        }, { threshold: 0.3 });
+        statsObserver.observe(statsBar);
+
+        // Pre-init category & step cards as hidden
+        document.querySelectorAll('.cat-card, .step-card').forEach(el => {
+            el.style.opacity = '0';
+        });
+
+        // === Upload Logic ===
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const browseBtn = document.getElementById('browseBtn');
+        const previewImg = document.getElementById('previewImg');
+        const previewWrap = document.getElementById('previewWrap');
+        const spinner = document.getElementById('spinner');
+        const errorMsg = document.getElementById('errorMsg');
+        const resultCard = document.getElementById('resultCard');
+        const emptyState = document.getElementById('emptyState');
+        const predClass = document.getElementById('predClass');
+        const predClassId = document.getElementById('predClassId');
+        const predConf = document.getElementById('predConf');
+        const classList = document.getElementById('classList');
+        const chartCanvas = document.getElementById('chartCanvas');
+
+        let chartInstance = null;
+
+        const CLASS_NAMES = {
+            'cardboard': 'Kardus',
+            'glass': 'Kaca',
+            'metal': 'Logam',
+            'paper': 'Kertas',
+            'plastic': 'Plastik',
+            'trash': 'Sampah Organik'
+        };
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.add('active');
+        }
+
+        function hideError() {
+            errorMsg.classList.remove('active');
+        }
+
+        browseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+
+        uploadZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                handleFile(fileInput.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            hideError();
+            if (!file.type.startsWith('image/')) {
+                showError('File bukan gambar. Pilih file gambar.');
+                return;
+            }
+            if (file.size > 16 * 1024 * 1024) {
+                showError('File terlalu besar. Maksimal 16 MB.');
+                return;
+            }
+            // Switch to classify tab
+            switchTab('classify');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewWrap.style.display = 'flex';
+                anime({
+                    targets: previewWrap,
+                    opacity: [0, 1],
+                    scale: [0.95, 1],
+                    duration: 400,
+                    easing: 'easeOutExpo',
+                });
+                predictImage(file);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function predictImage(file) {
+            spinner.classList.add('active');
+            resultCard.classList.remove('active');
+            document.getElementById('classifierGrid').classList.remove('has-result');
+            emptyState.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (!data.success) {
+                    showError(data.error || 'Terjadi kesalahan.');
+                    spinner.classList.remove('active');
+                    return;
+                }
+
+                predClass.textContent = data.pred_class.toUpperCase();
+                predClassId.textContent = data.pred_class_id;
+
+                const confTarget = data.confidence;
+                anime({
+                    targets: { v: 0 },
+                    v: confTarget,
+                    duration: 1200,
+                    easing: 'easeOutExpo',
+                    update: function(a) {
+                        predConf.textContent = a.animations[0].currentValue.toFixed(1) + '%';
+                    }
+                });
+
+                classList.innerHTML = '';
+                const entries = Object.entries(data.predictions);
+                entries.forEach(([cls, conf]) => {
+                    const div = document.createElement('div');
+                    div.className = 'prob-item' + (cls === data.pred_class ? ' highlight' : '');
+                    div.innerHTML =
+                        `<span class="name">${CLASS_NAMES[cls] || cls}</span><span class="val">${conf.toFixed(1)}%</span>`;
+                    classList.appendChild(div);
+                });
+
+                const labels = entries.map(([k]) => CLASS_NAMES[k] || k);
+                const values = entries.map(([, v]) => v);
+                const colors = entries.map(([k]) => k === data.pred_class ? '#4ade80' :
+                'rgba(255,255,255,0.08)');
+
+                if (chartInstance) chartInstance.destroy();
+
+                chartInstance = new Chart(chartCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Confidence (%)',
+                            data: values,
+                            backgroundColor: colors,
+                            borderRadius: 4,
+                            borderSkipped: false,
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => `${ctx.parsed.x.toFixed(1)}%`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 100,
+                                grid: { color: 'rgba(255,255,255,0.04)' },
+                                ticks: { color: '#6b7280', font: { size: 10 } }
+                            },
+                            y: {
+                                grid: { display: false },
+                                ticks: { color: '#6b7280', font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+
+                setTimeout(() => {
+                    anime({
+                        targets: document.querySelectorAll('.prob-item'),
+                        opacity: [0, 1],
+                        translateX: [-10, 0],
+                        duration: 400,
+                        easing: 'easeOutExpo',
+                        delay: anime.stagger(50),
+                    });
+                }, 300);
+
+                document.getElementById('classifierGrid').classList.add('has-result');
+                resultCard.classList.add('active');
+                anime({
+                    targets: resultCard,
+                    opacity: [0, 1],
+                    translateY: [20, 0],
+                    duration: 500,
+                    easing: 'easeOutExpo',
+                });
+
+            } catch (err) {
+                showError('Gagal terhubung ke server. Pastikan Flask berjalan.');
+            } finally {
+                spinner.classList.remove('active');
+            }
+        }
+    </script>
+
+</body>
+</html>
